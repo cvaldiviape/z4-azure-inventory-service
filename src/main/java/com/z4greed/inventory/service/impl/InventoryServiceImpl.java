@@ -11,7 +11,7 @@ import com.z4greed.inventory.kafka.producer.InventoryEventProducer;
 import com.z4greed.inventory.mapper.*;
 import com.z4greed.inventory.repository.*;
 import com.z4greed.inventory.service.InventoryService;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
@@ -69,7 +69,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
   }
 
-  private boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
+  private Boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
     return this.processedEventRepository.existsById(eventEnvelopeDto.eventId());
   }
 
@@ -91,7 +91,7 @@ public class InventoryServiceImpl implements InventoryService {
     Long orderId = Long.valueOf(sourceEvent.aggregateId());
     List<ReservationEntity> listReservations = new ArrayList<>();
     for (JsonNode itemNode : sourceEvent.payload().get("items")) {
-      boolean reserved = this.reserveItem(orderId, itemNode, listReservations);
+      Boolean reserved = this.reserveItem(orderId, itemNode, listReservations);
       if (!reserved) {
         this.publishStockNotAvailable(sourceEvent, itemNode);
         return;
@@ -100,10 +100,10 @@ public class InventoryServiceImpl implements InventoryService {
     this.publishStockReserved(sourceEvent, listReservations);
   }
 
-  private boolean reserveItem(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
+  private Boolean reserveItem(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
     Long productId = itemNode.get("productId").asLong();
-    int quantity = itemNode.get("quantity").asInt();
-    int affectedRows = this.inventoryRepository.reserve(productId, quantity);
+    Integer quantity = itemNode.get("quantity").asInt();
+    Integer affectedRows = this.inventoryRepository.reserve(productId, quantity);
     if (affectedRows == 0) {
       this.rollbackReservations(listReservations);
       return false;
@@ -114,14 +114,14 @@ public class InventoryServiceImpl implements InventoryService {
     return true;
   }
 
-  private ReservationEntity createReservation(Long orderId, Long productId, int quantity) {
+  private ReservationEntity createReservation(Long orderId, Long productId, Integer quantity) {
     ReservationCreateDto reservationCreateDto = ReservationCreateDto.builder()
         .reservationId(UUID.randomUUID().toString())
         .orderId(orderId)
         .productId(productId)
         .quantity(quantity)
         .status(ReservationStatusEnum.RESERVED)
-        .createdAt(Instant.now())
+        .createdAt(LocalDateTime.now())
         .build();
     ReservationEntity reservationEntity = this.inventoryMapper.toEntity(reservationCreateDto);
     return this.reservationRepository.save(reservationEntity);
@@ -156,13 +156,13 @@ public class InventoryServiceImpl implements InventoryService {
 
   private void releaseReservation(ReservationEntity reservationEntity) {
     Long productId = reservationEntity.getProductId();
-    int quantity = reservationEntity.getQuantity();
-    int affectedRows = this.inventoryRepository.release(productId, quantity);
+    Integer quantity = reservationEntity.getQuantity();
+    Integer affectedRows = this.inventoryRepository.release(productId, quantity);
     if (affectedRows != 1) {
       throw new GreedException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
     }
     reservationEntity.setStatus(ReservationStatusEnum.RELEASED);
-    reservationEntity.setUpdatedAt(Instant.now());
+    reservationEntity.setUpdatedAt(LocalDateTime.now());
   }
 
   private void publishEvent(EventEnvelopeDto sourceEvent, EventTypeEnum eventType, Object payload) {
@@ -173,7 +173,7 @@ public class InventoryServiceImpl implements InventoryService {
         .aggregateId(sourceEvent.aggregateId())
         .correlationId(sourceEvent.correlationId())
         .causationId(sourceEvent.eventId())
-        .timestamp(Instant.now())
+        .timestamp(LocalDateTime.now())
         .producer("inventory-service")
         .payload(this.objectMapper.valueToTree(payload))
         .build();

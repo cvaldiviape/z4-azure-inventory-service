@@ -2,7 +2,7 @@ package com.z4greed.inventory.entity;
 
 import com.z4greed.inventory.enums.ReservationStatusEnum;
 import jakarta.persistence.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
@@ -20,11 +20,11 @@ public class ReservationEntity {
   private String reservationId;
   private Long orderId;
   private Long productId;
-  private int quantity;
+  private Integer quantity;
 
   @Enumerated(EnumType.STRING)
   private ReservationStatusEnum status;
 
-  private Instant createdAt;
-  private Instant updatedAt;
+  private LocalDateTime createdAt;
+  private LocalDateTime updatedAt;
 }

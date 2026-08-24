@@ -1,12 +1,12 @@
 package com.z4greed.inventory.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import lombok.*;
 import lombok.AccessLevel;
 
 @Entity
-@Table(name = "inventory")
+@Table(name = "inventories")
 @Getter
 @Setter
 @Builder
@@ -18,8 +18,8 @@ public class InventoryEntity {
   private Long id;
 
   private Long productId;
-  private int availableQuantity;
-  private int reservedQuantity;
+  private Integer availableQuantity;
+  private Integer reservedQuantity;
   @Version private Long version;
-  private Instant updatedAt;
+  private LocalDateTime updatedAt;
 }
