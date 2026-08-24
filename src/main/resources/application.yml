@@ -1,0 +1,26 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: inventory-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  jpa:
+    open-in-view: false
+  security:
+    user:
+      name: disabled
+      password: disabled
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: inventory-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        spring.json.add.type.headers: false

@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5435/inventory_db
+    username: ecommerce
+    password: ecommerce
