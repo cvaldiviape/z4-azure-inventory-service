@@ -16,4 +16,5 @@ public class InventoryEventConsumer {
   public void consume(String rawEvent) {
     this.inventoryService.process(rawEvent);
   }
+
 }

@@ -3,13 +3,15 @@ package com.z4greed.inventory.entity;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
 import jakarta.persistence.*;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.*;
 
 @Entity
 @Table(name = "inventory_reservations")
 @Getter
+@Setter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ReservationEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,19 +27,4 @@ public class ReservationEntity {
 
   private Instant createdAt;
   private Instant updatedAt;
-
-  @Builder
-  public ReservationEntity(Long orderId, Long productId, int quantity) {
-    this.reservationId = UUID.randomUUID().toString();
-    this.orderId = orderId;
-    this.productId = productId;
-    this.quantity = quantity;
-    this.status = ReservationStatusEnum.RESERVED;
-    this.createdAt = Instant.now();
-  }
-
-  public void release() {
-    this.status = ReservationStatusEnum.RELEASED;
-    this.updatedAt = Instant.now();
-  }
 }

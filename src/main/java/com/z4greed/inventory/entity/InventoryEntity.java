@@ -2,14 +2,16 @@ package com.z4greed.inventory.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import lombok.*;
 import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "inventory")
 @Getter
+@Setter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class InventoryEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
