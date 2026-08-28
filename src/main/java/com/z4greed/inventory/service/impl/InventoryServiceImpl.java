@@ -26,7 +26,7 @@ public class InventoryServiceImpl implements InventoryService {
   private final InventoryEventProducer inventoryEventProducer;
   private final InventoryMapper inventoryMapper;
   private final ProcessedEventMapper processedEventMapper;
-  private final ObjectMapper objectMapper;
+  private final ObjectMapper mapper;
 
   public InventoryServiceImpl(
       InventoryRepository inventoryRepository,
@@ -35,20 +35,23 @@ public class InventoryServiceImpl implements InventoryService {
       InventoryEventProducer inventoryEventProducer,
       InventoryMapper inventoryMapper,
       ProcessedEventMapper processedEventMapper,
-      ObjectMapper objectMapper) {
+      ObjectMapper mapper
+  ) {
     this.inventoryRepository = inventoryRepository;
     this.reservationRepository = reservationRepository;
     this.processedEventRepository = processedEventRepository;
     this.inventoryEventProducer = inventoryEventProducer;
     this.inventoryMapper = inventoryMapper;
     this.processedEventMapper = processedEventMapper;
-    this.objectMapper = objectMapper;
+    this.mapper = mapper;
   }
 
   @Override
   public void process(String rawEvent) {
     EventEnvelopeDto eventEnvelopeDto = this.readEvent(rawEvent);
-    if (this.wasProcessed(eventEnvelopeDto)) {
+    Boolean wasProcessed = this.wasProcessed(eventEnvelopeDto);
+
+    if (wasProcessed) {
       return;
     }
 
@@ -63,21 +66,25 @@ public class InventoryServiceImpl implements InventoryService {
 
   private EventEnvelopeDto readEvent(String rawEvent) {
     try {
-      return this.objectMapper.readValue(rawEvent, EventEnvelopeDto.class);
+      return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
     } catch (Exception exception) {
       throw new GreedException(ErrorCodeEnum.INVALID_EVENT, exception);
     }
   }
 
   private Boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
-    return this.processedEventRepository.existsById(eventEnvelopeDto.eventId());
+    String eventId = eventEnvelopeDto.eventId();
+    return this.processedEventRepository.existsById(eventId);
   }
 
   private Consumer<EventEnvelopeDto> findEventHandler(EventEnvelopeDto eventEnvelopeDto) {
     Map<EventTypeEnum, Consumer<EventEnvelopeDto>> mapEventHandlers = Map.of(
         EventTypeEnum.ORDER_CREATED, this::reserveStock,
-        EventTypeEnum.RELEASE_STOCK, this::releaseStock);
-    return EventTypeEnum.fromValue(eventEnvelopeDto.eventType())
+        EventTypeEnum.RELEASE_STOCK, this::releaseStock
+    );
+
+    String eventType = eventEnvelopeDto.eventType();
+    return EventTypeEnum.fromValue(eventType)
         .map(mapEventHandlers::get)
         .orElse(null);
   }
@@ -88,9 +95,15 @@ public class InventoryServiceImpl implements InventoryService {
   }
 
   private void reserveStock(EventEnvelopeDto sourceEvent) {
-    Long orderId = Long.valueOf(sourceEvent.aggregateId());
+    String aggregateId = sourceEvent.aggregateId();
+    JsonNode payload = sourceEvent.payload();
+
+    Long orderId = Long.valueOf(aggregateId);
     List<ReservationEntity> listReservations = new ArrayList<>();
-    for (JsonNode itemNode : sourceEvent.payload().get("items")) {
+
+    JsonNode listItems = payload.get("items");
+
+    for (JsonNode itemNode : listItems) {
       Boolean reserved = this.reserveItem(orderId, itemNode, listReservations);
       if (!reserved) {
         this.publishStockNotAvailable(sourceEvent, itemNode);
@@ -104,6 +117,7 @@ public class InventoryServiceImpl implements InventoryService {
     Long productId = itemNode.get("productId").asLong();
     Integer quantity = itemNode.get("quantity").asInt();
     Integer affectedRows = this.inventoryRepository.reserve(productId, quantity);
+
     if (affectedRows == 0) {
       this.rollbackReservations(listReservations);
       return false;
@@ -112,6 +126,10 @@ public class InventoryServiceImpl implements InventoryService {
     ReservationEntity reservationEntity = this.createReservation(orderId, productId, quantity);
     listReservations.add(reservationEntity);
     return true;
+  }
+
+  private void rollbackReservations(List<ReservationEntity> listReservations) {
+    listReservations.forEach(this::releaseReservation);
   }
 
   private ReservationEntity createReservation(Long orderId, Long productId, Integer quantity) {
@@ -123,12 +141,9 @@ public class InventoryServiceImpl implements InventoryService {
         .status(ReservationStatusEnum.RESERVED)
         .createdAt(LocalDateTime.now())
         .build();
+
     ReservationEntity reservationEntity = this.inventoryMapper.toEntity(reservationCreateDto);
     return this.reservationRepository.save(reservationEntity);
-  }
-
-  private void rollbackReservations(List<ReservationEntity> listReservations) {
-    listReservations.forEach(this::releaseReservation);
   }
 
   private void publishStockNotAvailable(EventEnvelopeDto sourceEvent, JsonNode itemNode) {
@@ -141,15 +156,16 @@ public class InventoryServiceImpl implements InventoryService {
     List<String> listReservationIds = listReservations.stream()
         .map(ReservationEntity::getReservationId)
         .toList();
+
     Map<String, Object> mapPayload = Map.of("reservationIds", listReservationIds);
     this.publishEvent(sourceEvent, EventTypeEnum.STOCK_RESERVED, mapPayload);
   }
 
   private void releaseStock(EventEnvelopeDto sourceEvent) {
     Long orderId = Long.valueOf(sourceEvent.aggregateId());
-    List<ReservationEntity> listReservations = this.reservationRepository
-        .findByOrderIdAndStatus(orderId, ReservationStatusEnum.RESERVED);
+    List<ReservationEntity> listReservations = this.reservationRepository.findByOrderIdAndStatus(orderId, ReservationStatusEnum.RESERVED);
     listReservations.forEach(this::releaseReservation);
+
     Map<String, Object> mapPayload = Map.of();
     this.publishEvent(sourceEvent, EventTypeEnum.STOCK_RELEASED, mapPayload);
   }
@@ -175,8 +191,10 @@ public class InventoryServiceImpl implements InventoryService {
         .causationId(sourceEvent.eventId())
         .timestamp(LocalDateTime.now())
         .producer("inventory-service")
-        .payload(this.objectMapper.valueToTree(payload))
+        .payload(this.mapper.valueToTree(payload))
         .build();
+
     this.inventoryEventProducer.publish(eventEnvelopeDto);
   }
+
 }
