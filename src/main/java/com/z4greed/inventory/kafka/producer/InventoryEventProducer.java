@@ -21,7 +21,7 @@ public class InventoryEventProducer {
   public void publish(EventEnvelopeDto eventEnvelopeDto) {
     try {
       String eventJson = this.objectMapper.writeValueAsString(eventEnvelopeDto);
-      this.kafkaTemplate.send("inventory.events", eventEnvelopeDto.aggregateId(), eventJson);
+      this.kafkaTemplate.send("inventory-events-topic", eventEnvelopeDto.aggregateId(), eventJson);
     } catch (Exception exception) {
       throw new GreedException(ErrorCodeEnum.EVENT_PUBLISH_FAILED, exception);
     }

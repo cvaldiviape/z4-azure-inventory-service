@@ -1,6 +1,6 @@
 package com.z4greed.inventory.kafka.consumer;
 
-import com.z4greed.inventory.service.InventoryService;
+import com.z4greed.inventory.service.inventory.InventoryService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -12,8 +12,9 @@ public class InventoryEventConsumer {
     this.inventoryService = inventoryService;
   }
 
-  @KafkaListener(topics = {"orders.events", "inventory.events"})
-  public void consume(String rawEvent) {
+  // Permanece a la escucha de eventos publicados en "orders-events-topic" e "inventory-events-topic".
+  @KafkaListener(topics = {"orders-events-topic", "inventory-events-topic"})
+  public void consumeInventoryRelatedEvents(String rawEvent) {
     this.inventoryService.process(rawEvent);
   }
 

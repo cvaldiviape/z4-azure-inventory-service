@@ -13,14 +13,12 @@ spring:
       name: disabled
       password: disabled
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092} # Dirección del broker. La variable permite sobrescribir localhost en otros entornos.
     consumer:
-      group-id: inventory-service
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: inventory-event-consumer-group-id  # Grupo suscriptor de inventario para los topics orders-events-topic e inventory-events-topic.
+      auto-offset-reset: earliest  # Si el grupo no tiene un offset guardado, comienza desde el mensaje más antiguo.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer # Los eventos se reciben como texto porque el proyecto deserializa el JSON manualmente.
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer # Las claves y los eventos se publican como texto. La clave mantiene juntos los eventos del pedido.
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      properties:
-        spring.json.add.type.headers: false

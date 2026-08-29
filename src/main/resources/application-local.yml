@@ -1,5 +1,5 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5435/inventory_db
-    username: ecommerce
-    password: ecommerce
+    url: ${INVENTORY_DB_URL:jdbc:postgresql://localhost:5435/inventory_db}
+    username: ${INVENTORY_DB_USERNAME:postgres}
+    password: ${INVENTORY_DB_PASSWORD:saksah}
