@@ -1,6 +1,6 @@
 package com.z4greed.inventory.service.inventory.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.z4greed.inventory.entity.ProcessedEventEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;

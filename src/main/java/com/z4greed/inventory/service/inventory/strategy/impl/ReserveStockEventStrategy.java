@@ -1,6 +1,6 @@
 package com.z4greed.inventory.service.inventory.strategy.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
