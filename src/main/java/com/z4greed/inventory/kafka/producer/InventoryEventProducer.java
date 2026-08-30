@@ -10,18 +10,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class InventoryEventProducer {
   private final KafkaTemplate<String, String> kafkaTemplate;
-  private final ObjectMapper objectMapper;
+  private final ObjectMapper mapper;
 
   public InventoryEventProducer(
-      KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
+      KafkaTemplate<String, String> kafkaTemplate, ObjectMapper mapper) {
     this.kafkaTemplate = kafkaTemplate;
-    this.objectMapper = objectMapper;
+    this.mapper = mapper;
   }
 
-  public void publish(EventEnvelopeDto eventEnvelopeDto) {
+  public void publish(String topic, EventEnvelopeDto eventEnvelopeDto) {
     try {
-      String eventJson = this.objectMapper.writeValueAsString(eventEnvelopeDto);
-      this.kafkaTemplate.send("inventory-events-topic", eventEnvelopeDto.aggregateId(), eventJson);
+      String eventJson = this.mapper.writeValueAsString(eventEnvelopeDto);
+      this.kafkaTemplate.send(topic, eventEnvelopeDto.aggregateId(), eventJson);
     } catch (Exception exception) {
       throw new GreedException(ErrorCodeEnum.EVENT_PUBLISH_FAILED, exception);
     }

@@ -35,15 +35,14 @@ public class ReleaseStockEventStrategy implements InventoryEventStrategy {
   @Override
   public void execute(EventEnvelopeDto eventEnvelopeDto) {
     Long orderId = Long.valueOf(eventEnvelopeDto.aggregateId());
+
     List<ReservationEntity> listReservations = this.inventoryReservationManager.findReservedByOrderId(orderId);
     this.inventoryReservationManager.releaseAll(listReservations);
 
     Map<String, Object> mapPayload = Map.of();
-    EventEnvelopeDto stockReleasedEvent = this.inventoryEventFactory.build(
-        EventTypeEnum.STOCK_RELEASED,
-        eventEnvelopeDto,
-        mapPayload
-    );
-    this.inventoryEventProducer.publish(stockReleasedEvent);
+    EventEnvelopeDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, eventEnvelopeDto, mapPayload);
+
+    this.inventoryEventProducer.publish("inventory-events-topic", stockReleasedEvent);
   }
+
 }

@@ -55,12 +55,9 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
   private void publishStockNotAvailable(EventEnvelopeDto sourceEvent, JsonNode itemNode) {
     Long productId = itemNode.get("productId").asLong();
     Map<String, Object> mapPayload = Map.of("productId", productId);
-    EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(
-        EventTypeEnum.STOCK_NOT_AVAILABLE,
-        sourceEvent,
-        mapPayload
-    );
-    this.inventoryEventProducer.publish(eventEnvelopeDto);
+
+    EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, sourceEvent, mapPayload);
+    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
   }
 
   private void publishStockReserved(EventEnvelopeDto sourceEvent, List<ReservationEntity> listReservations) {
@@ -68,11 +65,10 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
         .map(ReservationEntity::getReservationId)
         .toList();
     Map<String, Object> mapPayload = Map.of("reservationIds", listReservationIds);
-    EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(
-        EventTypeEnum.STOCK_RESERVED,
-        sourceEvent,
-        mapPayload
-    );
-    this.inventoryEventProducer.publish(eventEnvelopeDto);
+
+    EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, sourceEvent, mapPayload);
+
+    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
   }
+
 }

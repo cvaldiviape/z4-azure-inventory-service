@@ -10,9 +10,7 @@ import org.springframework.stereotype.Component;
 public class InventoryEventStrategyRegistry {
   private final Map<EventTypeEnum, InventoryEventStrategy> mapEventStrategies;
 
-  public InventoryEventStrategyRegistry(
-      List<InventoryEventStrategy> listEventStrategies
-  ) {
+  public InventoryEventStrategyRegistry(List<InventoryEventStrategy> listEventStrategies) {
     // Spring inyecta todos los beans que implementan InventoryEventStrategy.
     this.mapEventStrategies = new EnumMap<>(EventTypeEnum.class);
 
@@ -25,4 +23,5 @@ public class InventoryEventStrategyRegistry {
   public InventoryEventStrategy find(EventTypeEnum eventTypeEnum) {
     return this.mapEventStrategies.get(eventTypeEnum);
   }
+
 }
