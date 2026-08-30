@@ -31,7 +31,7 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
 
   @Override
   public EventTypeEnum getEventType() {
-    return EventTypeEnum.ORDER_CREATED;
+    return EventTypeEnum.RESERVE_STOCK;
   }
 
   @Override

@@ -17,7 +17,7 @@ public class InventoryEventStrategyRegistry {
   ) {
     // Cada tipo de evento queda asociado explícitamente con la estrategia que debe procesarlo.
     this.mapEventStrategies = Map.of(
-        EventTypeEnum.ORDER_CREATED, reserveStockEventStrategy,
+        EventTypeEnum.RESERVE_STOCK, reserveStockEventStrategy,
         EventTypeEnum.RELEASE_STOCK, releaseStockEventStrategy
     );
   }

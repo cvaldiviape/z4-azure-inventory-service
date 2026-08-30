@@ -12,8 +12,8 @@ public class InventoryEventConsumer {
     this.inventoryService = inventoryService;
   }
 
-  // Permanece a la escucha de eventos publicados en "orders-events-topic" e "inventory-events-topic".
-  @KafkaListener(topics = {"orders-events-topic", "inventory-events-topic"})
+  // Permanece a la escucha de RESERVE_STOCK y RELEASE_STOCK publicados en "inventory-commands-topic".
+  @KafkaListener(topics = "inventory-commands-topic")
   public void consumeInventoryRelatedEvents(String rawEvent) {
     this.inventoryService.process(rawEvent);
   }

@@ -11,12 +11,14 @@ import com.z4greed.inventory.repository.ProcessedEventRepository;
 import com.z4greed.inventory.service.inventory.InventoryService;
 import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
 import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategyRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Service
 @Transactional
+@Slf4j
 public class InventoryServiceImpl implements InventoryService {
   private final ProcessedEventRepository processedEventRepository;
   private final ProcessedEventMapper processedEventMapper;
@@ -38,26 +40,41 @@ public class InventoryServiceImpl implements InventoryService {
   @Override
   public void process(String rawEvent) {
     EventEnvelopeDto eventEnvelopeDto = this.readEvent(rawEvent);
+    log.info("action=event_received eventType={} eventId={} correlationId={} orderId={} producer={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId(), eventEnvelopeDto.producer());
+
+    try {
+      this.processEvent(eventEnvelopeDto);
+    } catch (RuntimeException exception) {
+      log.error("action=event_processing_failed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId(), exception);
+      throw exception;
+    }
+  }
+
+  private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
     Boolean wasProcessed = this.wasProcessed(eventEnvelopeDto);
 
     if (wasProcessed) {
+      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
 
     InventoryEventStrategy eventStrategy = this.findEventStrategy(eventEnvelopeDto);
 
     if (eventStrategy == null) {
+      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
 
     eventStrategy.execute(eventEnvelopeDto);
     this.markAsProcessed(eventEnvelopeDto);
+    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 
   private EventEnvelopeDto readEvent(String rawEvent) {
     try {
       return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
     } catch (Exception exception) {
+      log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
       throw new GreedException(ErrorCodeEnum.INVALID_EVENT, exception);
     }
   }

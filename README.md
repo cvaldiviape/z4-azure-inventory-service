@@ -9,7 +9,7 @@ Servicio responsable de reservar y liberar stock durante la Saga de compra.
 | Puerto HTTP | `8083` |
 | PostgreSQL | `localhost:5435/inventory_db` |
 | Kafka | `localhost:9092` |
-| Consumer group ID | `inventory-event-consumer-group-id` |
+| Consumer group ID | `inventory-command-consumer-group-id` |
 
 Flyway crea y modifica el esquema mediante `db/migration`. Hibernate utiliza `ddl-auto: validate` únicamente para comprobar que las entidades coincidan con las tablas; no crea ni altera la estructura.
 
@@ -18,14 +18,13 @@ Flyway crea y modifica el esquema mediante `db/migration`. Hibernate utiliza `dd
 `InventoryEventConsumer` permanece a la escucha de:
 
 ```text
-orders-events-topic
-inventory-events-topic
+inventory-commands-topic
 ```
 
 Las estrategias ejecutadas son:
 
 ```text
-ORDER_CREATED → ReserveStockEventStrategy
+RESERVE_STOCK → ReserveStockEventStrategy
 RELEASE_STOCK → ReleaseStockEventStrategy
 ```
 
@@ -34,6 +33,8 @@ El servicio publica sus resultados en:
 ```text
 inventory-events-topic
 ```
+
+Inventory Service consume únicamente comandos y publica únicamente eventos. Por eso no vuelve a recibir `STOCK_RESERVED`, `STOCK_NOT_AVAILABLE` ni `STOCK_RELEASED`.
 
 ## Variables disponibles
 
