@@ -1,12 +1,10 @@
 package com.z4greed.inventory.service.inventory.reservation;
 
 import tools.jackson.databind.JsonNode;
-import com.z4greed.inventory.dto.ReservationCreateDto;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
 import com.z4greed.inventory.exception.GreedException;
-import com.z4greed.inventory.mapper.InventoryMapper;
 import com.z4greed.inventory.repository.InventoryRepository;
 import com.z4greed.inventory.repository.ReservationRepository;
 import java.time.LocalDateTime;
@@ -18,16 +16,13 @@ import org.springframework.stereotype.Component;
 public class InventoryReservationManager {
   private final InventoryRepository inventoryRepository;
   private final ReservationRepository reservationRepository;
-  private final InventoryMapper inventoryMapper;
 
   public InventoryReservationManager(
       InventoryRepository inventoryRepository,
-      ReservationRepository reservationRepository,
-      InventoryMapper inventoryMapper
+      ReservationRepository reservationRepository
   ) {
     this.inventoryRepository = inventoryRepository;
     this.reservationRepository = reservationRepository;
-    this.inventoryMapper = inventoryMapper;
   }
 
   public Boolean reserve(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
@@ -46,7 +41,7 @@ public class InventoryReservationManager {
   }
 
   private ReservationEntity create(Long orderId, Long productId, Integer quantity) {
-    ReservationCreateDto reservationCreateDto = ReservationCreateDto.builder()
+    ReservationEntity reservationEntity = ReservationEntity.builder()
         .reservationId(UUID.randomUUID().toString())
         .orderId(orderId)
         .productId(productId)
@@ -54,7 +49,7 @@ public class InventoryReservationManager {
         .status(ReservationStatusEnum.RESERVED)
         .createdAt(LocalDateTime.now())
         .build();
-    ReservationEntity reservationEntity = this.inventoryMapper.toEntity(reservationCreateDto);
+
     return this.reservationRepository.save(reservationEntity);
   }
 
