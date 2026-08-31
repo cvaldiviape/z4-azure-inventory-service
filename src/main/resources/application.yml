@@ -1,0 +1,26 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: inventory-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  security:
+    user:
+      name: disabled
+      password: disabled
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092} # Dirección del broker. La variable permite sobrescribir localhost en otros entornos.
+    consumer:
+      group-id: inventory-command-consumer-group-id # Grupo de Inventory Service que procesa comandos de inventory-commands-topic.
+      auto-offset-reset: earliest  # Si el grupo no tiene un offset guardado, comienza desde el mensaje más antiguo.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer # Los eventos se reciben como texto porque el proyecto deserializa el JSON manualmente.
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer # Las claves y los eventos se publican como texto. La clave mantiene juntos los eventos del pedido.
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
