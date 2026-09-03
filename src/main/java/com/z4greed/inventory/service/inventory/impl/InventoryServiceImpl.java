@@ -4,7 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.z4greed.inventory.entity.ProcessedEventEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.exception.GreedException;
+import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.mapper.ProcessedEventMapper;
 import com.z4greed.inventory.repository.ProcessedEventRepository;
@@ -64,7 +64,6 @@ public class InventoryServiceImpl implements InventoryService {
       log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
-
     eventStrategy.execute(eventEnvelopeDto);
     
     this.markAsProcessed(eventEnvelopeDto);
@@ -76,7 +75,7 @@ public class InventoryServiceImpl implements InventoryService {
       return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
     } catch (Exception exception) {
       log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
-      throw new GreedException(ErrorCodeEnum.INVALID_EVENT, exception);
+      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
     }
   }
 

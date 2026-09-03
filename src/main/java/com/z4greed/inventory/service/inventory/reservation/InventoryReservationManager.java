@@ -4,7 +4,7 @@ import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
-import com.z4greed.inventory.exception.GreedException;
+import com.z4greed.inventory.exception.CustomBusinessException;
 import com.z4greed.inventory.repository.InventoryRepository;
 import com.z4greed.inventory.repository.ReservationRepository;
 import java.time.LocalDateTime;
@@ -67,7 +67,7 @@ public class InventoryReservationManager {
     Integer affectedRows = this.inventoryRepository.release(productId, quantity);
 
     if (affectedRows != 1) {
-      throw new GreedException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
+      throw new CustomBusinessException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
     }
 
     reservationEntity.setStatus(ReservationStatusEnum.RELEASED);
