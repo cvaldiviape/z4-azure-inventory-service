@@ -50,6 +50,15 @@ public class InventoryServiceImpl implements InventoryService {
     }
   }
 
+  private EventEnvelopeDto readEvent(String rawEvent) {
+    try {
+      return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
+    } catch (Exception exception) {
+      log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
+      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
+    }
+  }
+
   private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
     Boolean wasProcessed = this.wasProcessed(eventEnvelopeDto);
 
@@ -68,15 +77,6 @@ public class InventoryServiceImpl implements InventoryService {
     
     this.markAsProcessed(eventEnvelopeDto);
     log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
-  }
-
-  private EventEnvelopeDto readEvent(String rawEvent) {
-    try {
-      return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
-    } catch (Exception exception) {
-      log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
-      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
-    }
   }
 
   private Boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
