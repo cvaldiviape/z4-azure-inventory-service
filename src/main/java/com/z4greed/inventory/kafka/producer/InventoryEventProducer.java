@@ -2,10 +2,12 @@ package com.z4greed.inventory.kafka.producer;
 
 import com.z4greed.inventory.entity.OutboxEventEntity;
 import com.z4greed.inventory.exception.CustomRetryableKafkaException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,13 +26,22 @@ public class InventoryEventProducer {
   // El ACK de Kafka es obligatorio antes de que el publicador cambie PENDING a PUBLISHED.
   public void publishAndWait(OutboxEventEntity outboxEvent) {
     try {
-      var sendResult = this.kafkaTemplate
-          .send(outboxEvent.getTopic(), outboxEvent.getEventKey(), outboxEvent.getPayload())
-          .get(this.sendTimeoutMilliseconds, TimeUnit.MILLISECONDS);
+      String topic = outboxEvent.getTopic();
+      String eventKey = outboxEvent.getEventKey();
+      String payload = outboxEvent.getPayload();
+
+      // send() inicia la publicación de manera asíncrona: devuelve inmediatamente un Future
+      // que representa una operación todavía pendiente, no una confirmación del consumidor.
+      CompletableFuture<SendResult<String, String>> send = this.kafkaTemplate.send(topic, eventKey, payload);
+
+      // get() espera hasta que Kafka confirme la escritura (ACK) o venza el timeout.
+      // Si retorna un SendResult, Kafka asignó una partición y un offset al mensaje.
+      // Si Kafka rechaza el envío o no responde, get() lanza una excepción.
+      SendResult<String, String> sendResult = send.get(this.sendTimeoutMilliseconds, TimeUnit.MILLISECONDS);
 
       log.info(
           "action=event_published topic={} partition={} offset={} eventType={} eventId={} orderId={}",
-          outboxEvent.getTopic(),
+          topic,
           sendResult.getRecordMetadata().partition(),
           sendResult.getRecordMetadata().offset(),
           outboxEvent.getEventType(),

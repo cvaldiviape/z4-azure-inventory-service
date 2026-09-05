@@ -18,7 +18,8 @@ public class OutboxEventPublisher {
   public OutboxEventPublisher(
       OutboxEventService outboxEventService,
       InventoryEventProducer inventoryEventProducer,
-      @Value("${app.outbox.batch-size}") int batchSize) {
+      @Value("${app.outbox.batch-size}") int batchSize
+  ) {
     this.outboxEventService = outboxEventService;
     this.inventoryEventProducer = inventoryEventProducer;
     this.batchSize = batchSize;
@@ -26,29 +27,36 @@ public class OutboxEventPublisher {
 
   // PENDING existe únicamente en PostgreSQL. Este componente consulta esos registros
   // periódicamente, los publica en Kafka y solo después del ACK los marca PUBLISHED.
-  @Scheduled(
-      fixedDelayString = "${app.outbox.poll-interval-milliseconds}",
-      initialDelayString = "${app.outbox.initial-delay-milliseconds}")
+  @Scheduled(fixedDelayString = "${app.outbox.poll-interval-milliseconds}", initialDelayString = "${app.outbox.initial-delay-milliseconds}")
   public void publishPendingEvents() {
-    List<OutboxEventEntity> pendingEvents = this.outboxEventService.findPending(this.batchSize);
+    List<OutboxEventEntity> listPendingEvents = this.outboxEventService.findPending(this.batchSize);
 
-    for (OutboxEventEntity outboxEvent : pendingEvents) {
-      try {
-        this.inventoryEventProducer.publishAndWait(outboxEvent);
-        this.outboxEventService.markAsPublished(outboxEvent.getEventId());
-      } catch (RuntimeException exception) {
-        this.outboxEventService.registerFailedAttempt(
-            outboxEvent.getEventId(),
-            this.limitErrorMessage(exception.getMessage()));
-        log.error(
-            "action=outbox_publish_failed eventType={} eventId={} correlationId={} orderId={} attempts={}",
-            outboxEvent.getEventType(),
-            outboxEvent.getEventId(),
-            outboxEvent.getCorrelationId(),
-            outboxEvent.getAggregateId(),
-            outboxEvent.getAttempts() + 1,
-            exception);
-      }
+    for (OutboxEventEntity outboxEvent : listPendingEvents) {
+      this.publishPendingEvent(outboxEvent);
+    }
+  }
+
+  private void publishPendingEvent(OutboxEventEntity outboxEvent) {
+    String eventId = outboxEvent.getEventId();
+
+    try {
+      // Este método solo retorna normalmente cuando Kafka responde con su ACK.
+      this.inventoryEventProducer.publishAndWait(outboxEvent);
+
+      // PUBLISHED significa que Kafka confirmó la publicación; no significa que
+      // el servicio consumidor ya haya procesado el evento.
+      this.outboxEventService.markAsPublished(eventId);
+    } catch (RuntimeException exception) {
+      // Ante timeout o error de Kafka no se marca PUBLISHED. El registro continúa
+      // PENDING para que un ciclo posterior del scheduler vuelva a intentarlo.
+      String errorMessage = this.limitErrorMessage(exception.getMessage());
+      this.outboxEventService.registerFailedAttempt(eventId, errorMessage);
+
+      String eventType = outboxEvent.getEventType();
+      String correlationId = outboxEvent.getCorrelationId();
+      String aggregateId = outboxEvent.getAggregateId();
+      int i = outboxEvent.getAttempts() + 1;
+      log.error("action=outbox_publish_failed eventType={} eventId={} correlationId={} orderId={} attempts={}", eventType, eventId, correlationId, aggregateId, i, exception);
     }
   }
 
@@ -58,4 +66,5 @@ public class OutboxEventPublisher {
     }
     return errorMessage.substring(0, Math.min(errorMessage.length(), 2000));
   }
+
 }
