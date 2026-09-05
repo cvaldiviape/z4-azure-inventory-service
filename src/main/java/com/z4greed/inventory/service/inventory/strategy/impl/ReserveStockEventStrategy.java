@@ -5,9 +5,9 @@ import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
-import com.z4greed.inventory.kafka.producer.InventoryEventProducer;
 import com.z4greed.inventory.service.inventory.reservation.InventoryReservationManager;
 import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
+import com.z4greed.inventory.service.outbox.OutboxEventService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,16 +17,16 @@ import org.springframework.stereotype.Component;
 public class ReserveStockEventStrategy implements InventoryEventStrategy {
   private final InventoryReservationManager inventoryReservationManager;
   private final InventoryEventFactory inventoryEventFactory;
-  private final InventoryEventProducer inventoryEventProducer;
+  private final OutboxEventService outboxEventService;
 
   public ReserveStockEventStrategy(
       InventoryReservationManager inventoryReservationManager,
       InventoryEventFactory inventoryEventFactory,
-      InventoryEventProducer inventoryEventProducer
+      OutboxEventService outboxEventService
   ) {
     this.inventoryReservationManager = inventoryReservationManager;
     this.inventoryEventFactory = inventoryEventFactory;
-    this.inventoryEventProducer = inventoryEventProducer;
+    this.outboxEventService = outboxEventService;
   }
 
   @Override
@@ -57,7 +57,8 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
     Map<String, Object> mapPayload = Map.of("productId", productId);
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, sourceEvent, mapPayload);
-    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
+
+    this.outboxEventService.enqueue("inventory-events-topic", eventEnvelopeDto);
   }
 
   private void publishStockReserved(EventEnvelopeDto sourceEvent, List<ReservationEntity> listReservations) {
@@ -68,7 +69,7 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, sourceEvent, mapPayload);
 
-    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
+    this.outboxEventService.enqueue("inventory-events-topic", eventEnvelopeDto);
   }
 
 }

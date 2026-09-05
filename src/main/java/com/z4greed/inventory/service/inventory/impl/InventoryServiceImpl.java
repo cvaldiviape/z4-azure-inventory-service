@@ -1,13 +1,13 @@
 package com.z4greed.inventory.service.inventory.impl;
 
 import tools.jackson.databind.ObjectMapper;
-import com.z4greed.inventory.entity.ProcessedEventEntity;
+import com.z4greed.inventory.entity.InboxEventEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
-import com.z4greed.inventory.mapper.ProcessedEventMapper;
-import com.z4greed.inventory.repository.ProcessedEventRepository;
+import com.z4greed.inventory.mapper.InboxEventMapper;
+import com.z4greed.inventory.repository.InboxEventRepository;
 import com.z4greed.inventory.service.inventory.InventoryService;
 import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
 import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategyRegistry;
@@ -20,19 +20,19 @@ import java.util.Optional;
 @Transactional
 @Slf4j
 public class InventoryServiceImpl implements InventoryService {
-  private final ProcessedEventRepository processedEventRepository;
-  private final ProcessedEventMapper processedEventMapper;
+  private final InboxEventRepository inboxEventRepository;
+  private final InboxEventMapper inboxEventMapper;
   private final InventoryEventStrategyRegistry eventStrategyRegistry;
   private final ObjectMapper mapper;
 
   public InventoryServiceImpl(
-      ProcessedEventRepository processedEventRepository,
-      ProcessedEventMapper processedEventMapper,
+      InboxEventRepository inboxEventRepository,
+      InboxEventMapper inboxEventMapper,
       InventoryEventStrategyRegistry eventStrategyRegistry,
       ObjectMapper mapper
   ) {
-    this.processedEventRepository = processedEventRepository;
-    this.processedEventMapper = processedEventMapper;
+    this.inboxEventRepository = inboxEventRepository;
+    this.inboxEventMapper = inboxEventMapper;
     this.eventStrategyRegistry = eventStrategyRegistry;
     this.mapper = mapper;
   }
@@ -60,9 +60,9 @@ public class InventoryServiceImpl implements InventoryService {
   }
 
   private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
-    Boolean wasProcessed = this.wasProcessed(eventEnvelopeDto);
+    boolean wasAlreadyProcessed = this.wasAlreadyProcessed(eventEnvelopeDto);
 
-    if (wasProcessed) {
+    if (wasAlreadyProcessed) {
       log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
@@ -75,13 +75,13 @@ public class InventoryServiceImpl implements InventoryService {
     }
     eventStrategy.execute(eventEnvelopeDto);
     
-    this.markAsProcessed(eventEnvelopeDto);
+    this.registerInInbox(eventEnvelopeDto);
     log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 
-  private Boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
+  private boolean wasAlreadyProcessed(EventEnvelopeDto eventEnvelopeDto) {
     String eventId = eventEnvelopeDto.eventId();
-    return this.processedEventRepository.existsById(eventId);
+    return this.inboxEventRepository.existsById(eventId);
   }
 
   private InventoryEventStrategy findEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
@@ -93,9 +93,9 @@ public class InventoryServiceImpl implements InventoryService {
         .orElse(null);
   }
 
-  private void markAsProcessed(EventEnvelopeDto eventEnvelopeDto) {
-    ProcessedEventEntity processedEventEntity = this.processedEventMapper.toEntity(eventEnvelopeDto);
-    this.processedEventRepository.save(processedEventEntity);
+  private void registerInInbox(EventEnvelopeDto eventEnvelopeDto) {
+    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(eventEnvelopeDto);
+    this.inboxEventRepository.save(inboxEvent);
   }
 
 }
