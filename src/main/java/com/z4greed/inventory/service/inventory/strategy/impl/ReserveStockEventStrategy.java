@@ -41,7 +41,7 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
     JsonNode listItems = eventEnvelopeDto.payload().get("items");
 
     for (JsonNode itemNode : listItems) {
-      Boolean reserved = this.inventoryReservationManager.reserve(orderId, itemNode, listReservations);
+      boolean reserved = this.inventoryReservationManager.tryReserve(orderId, itemNode, listReservations);
 
       if (!reserved) {
         this.publishStockNotAvailable(eventEnvelopeDto, itemNode);

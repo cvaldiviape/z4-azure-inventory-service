@@ -25,12 +25,12 @@ public class InventoryReservationManager {
     this.reservationRepository = reservationRepository;
   }
 
-  public Boolean reserve(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
+  public boolean tryReserve(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
     Long productId = itemNode.get("productId").asLong();
     Integer quantity = itemNode.get("quantity").asInt();
-    Integer affectedRows = this.inventoryRepository.reserve(productId, quantity);
+    int updatedRows = this.inventoryRepository.reserveIfAvailable(productId, quantity);
 
-    if (affectedRows == 0) {
+    if (updatedRows == 0) {
       this.releaseAll(listReservations);
       return false;
     }
@@ -58,15 +58,15 @@ public class InventoryReservationManager {
   }
 
   public void releaseAll(List<ReservationEntity> listReservations) {
-    listReservations.forEach(this::release);
+    listReservations.forEach(this::releaseReservation);
   }
 
-  private void release(ReservationEntity reservationEntity) {
+  private void releaseReservation(ReservationEntity reservationEntity) {
     Long productId = reservationEntity.getProductId();
     Integer quantity = reservationEntity.getQuantity();
-    Integer affectedRows = this.inventoryRepository.release(productId, quantity);
+    int updatedRows = this.inventoryRepository.releaseIfReserved(productId, quantity);
 
-    if (affectedRows != 1) {
+    if (updatedRows != 1) {
       throw new CustomBusinessException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
     }
 
