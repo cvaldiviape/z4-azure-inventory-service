@@ -1,23 +1,24 @@
-package com.z4greed.inventory.service.inventory.reservation;
+package com.z4greed.inventory.service.impl;
 
-import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
 import com.z4greed.inventory.exception.CustomBusinessException;
 import com.z4greed.inventory.repository.InventoryRepository;
 import com.z4greed.inventory.repository.ReservationRepository;
+import com.z4greed.inventory.service.StockService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
 
-@Component
-public class InventoryReservationManager {
+@Service
+public class StockServiceImpl implements StockService {
   private final InventoryRepository inventoryRepository;
   private final ReservationRepository reservationRepository;
 
-  public InventoryReservationManager(
+  public StockServiceImpl(
       InventoryRepository inventoryRepository,
       ReservationRepository reservationRepository
   ) {
@@ -25,7 +26,12 @@ public class InventoryReservationManager {
     this.reservationRepository = reservationRepository;
   }
 
-  public boolean tryReserve(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
+  @Override
+  public boolean tryReserve(
+      Long orderId,
+      JsonNode itemNode,
+      List<ReservationEntity> listReservations
+  ) {
     Long productId = itemNode.get("productId").asLong();
     Integer quantity = itemNode.get("quantity").asInt();
     int updatedRows = this.inventoryRepository.reserveIfAvailable(productId, quantity);
@@ -53,10 +59,14 @@ public class InventoryReservationManager {
     return this.reservationRepository.save(reservationEntity);
   }
 
+  @Override
   public List<ReservationEntity> findReservedByOrderId(Long orderId) {
-    return this.reservationRepository.findByOrderIdAndStatus(orderId, ReservationStatusEnum.RESERVED);
+    return this.reservationRepository.findByOrderIdAndStatus(
+        orderId,
+        ReservationStatusEnum.RESERVED);
   }
 
+  @Override
   public void releaseAll(List<ReservationEntity> listReservations) {
     listReservations.forEach(this::releaseReservation);
   }

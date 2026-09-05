@@ -1,9 +1,9 @@
-package com.z4greed.inventory.service.inventory.strategy;
+package com.z4greed.inventory.strategy;
 
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 
-public interface InventoryEventStrategy {
+public interface StockEventStrategy {
   EventTypeEnum getEventType();
   void execute(EventEnvelopeDto eventEnvelopeDto);
 }

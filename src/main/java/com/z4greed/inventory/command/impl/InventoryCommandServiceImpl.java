@@ -1,16 +1,14 @@
-package com.z4greed.inventory.service.inventory.impl;
+package com.z4greed.inventory.command.impl;
 
 import tools.jackson.databind.ObjectMapper;
-import com.z4greed.inventory.entity.InboxEventEntity;
+import com.z4greed.inventory.command.InventoryCommandService;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
-import com.z4greed.inventory.mapper.InboxEventMapper;
-import com.z4greed.inventory.repository.InboxEventRepository;
-import com.z4greed.inventory.service.inventory.InventoryService;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategyRegistry;
+import com.z4greed.inventory.service.InboxEventService;
+import com.z4greed.inventory.strategy.StockEventStrategy;
+import com.z4greed.inventory.strategy.StockEventStrategyRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,21 +17,18 @@ import java.util.Optional;
 @Service
 @Transactional
 @Slf4j
-public class InventoryServiceImpl implements InventoryService {
-  private final InboxEventRepository inboxEventRepository;
-  private final InboxEventMapper inboxEventMapper;
-  private final InventoryEventStrategyRegistry eventStrategyRegistry;
+public class InventoryCommandServiceImpl implements InventoryCommandService {
+  private final InboxEventService inboxEventService;
+  private final StockEventStrategyRegistry stockEventStrategyRegistry;
   private final ObjectMapper mapper;
 
-  public InventoryServiceImpl(
-      InboxEventRepository inboxEventRepository,
-      InboxEventMapper inboxEventMapper,
-      InventoryEventStrategyRegistry eventStrategyRegistry,
+  public InventoryCommandServiceImpl(
+      InboxEventService inboxEventService,
+      StockEventStrategyRegistry stockEventStrategyRegistry,
       ObjectMapper mapper
   ) {
-    this.inboxEventRepository = inboxEventRepository;
-    this.inboxEventMapper = inboxEventMapper;
-    this.eventStrategyRegistry = eventStrategyRegistry;
+    this.inboxEventService = inboxEventService;
+    this.stockEventStrategyRegistry = stockEventStrategyRegistry;
     this.mapper = mapper;
   }
 
@@ -60,42 +55,33 @@ public class InventoryServiceImpl implements InventoryService {
   }
 
   private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
-    boolean wasAlreadyProcessed = this.wasAlreadyProcessed(eventEnvelopeDto);
+    String eventId = eventEnvelopeDto.eventId();
+    boolean wasAlreadyProcessed = this.inboxEventService.wasAlreadyProcessed(eventId);
 
     if (wasAlreadyProcessed) {
       log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
 
-    InventoryEventStrategy eventStrategy = this.findEventStrategy(eventEnvelopeDto);
+    StockEventStrategy stockEventStrategy = this.findStockEventStrategy(eventEnvelopeDto);
 
-    if (eventStrategy == null) {
+    if (stockEventStrategy == null) {
       log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
       return;
     }
-    eventStrategy.execute(eventEnvelopeDto);
+    stockEventStrategy.execute(eventEnvelopeDto);
     
-    this.registerInInbox(eventEnvelopeDto);
+    this.inboxEventService.register(eventEnvelopeDto);
     log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 
-  private boolean wasAlreadyProcessed(EventEnvelopeDto eventEnvelopeDto) {
-    String eventId = eventEnvelopeDto.eventId();
-    return this.inboxEventRepository.existsById(eventId);
-  }
-
-  private InventoryEventStrategy findEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
+  private StockEventStrategy findStockEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
     String eventType = eventEnvelopeDto.eventType();
     Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
 
     return eventTypeEnum
-        .map(this.eventStrategyRegistry::find)
+        .map(this.stockEventStrategyRegistry::find)
         .orElse(null);
-  }
-
-  private void registerInInbox(EventEnvelopeDto eventEnvelopeDto) {
-    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(eventEnvelopeDto);
-    this.inboxEventRepository.save(inboxEvent);
   }
 
 }

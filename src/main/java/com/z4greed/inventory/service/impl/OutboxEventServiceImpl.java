@@ -1,4 +1,4 @@
-package com.z4greed.inventory.service.outbox;
+package com.z4greed.inventory.service.impl;
 
 import com.z4greed.inventory.entity.OutboxEventEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
@@ -6,6 +6,7 @@ import com.z4greed.inventory.enums.OutboxStatusEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.repository.OutboxEventRepository;
+import com.z4greed.inventory.service.OutboxEventService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
@@ -14,19 +15,21 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
-public class OutboxEventService {
+public class OutboxEventServiceImpl implements OutboxEventService {
   private final OutboxEventRepository outboxEventRepository;
   private final ObjectMapper mapper;
 
-  public OutboxEventService(
+  public OutboxEventServiceImpl(
       OutboxEventRepository outboxEventRepository,
-      ObjectMapper mapper) {
+      ObjectMapper mapper
+  ) {
     this.outboxEventRepository = outboxEventRepository;
     this.mapper = mapper;
   }
 
   // Esta inserción participa en la misma transacción de inventario. Si la reserva,
   // inbox_events o este INSERT falla, PostgreSQL revierte todas las operaciones.
+  @Override
   @Transactional
   public void enqueue(String topic, EventEnvelopeDto eventEnvelopeDto) {
     String payload = this.serialize(eventEnvelopeDto);
@@ -58,6 +61,7 @@ public class OutboxEventService {
     }
   }
 
+  @Override
   @Transactional(readOnly = true)
   public List<OutboxEventEntity> findPending(int batchSize) {
     return this.outboxEventRepository.findByStatusOrderByCreatedAtAsc(
@@ -65,6 +69,7 @@ public class OutboxEventService {
         PageRequest.of(0, batchSize));
   }
 
+  @Override
   @Transactional
   public void markAsPublished(String eventId) {
     this.outboxEventRepository.findById(eventId).ifPresent(outboxEvent -> {
@@ -74,6 +79,7 @@ public class OutboxEventService {
     });
   }
 
+  @Override
   @Transactional
   public void registerFailedAttempt(String eventId, String errorMessage) {
     this.outboxEventRepository.findById(eventId).ifPresent(outboxEvent -> {

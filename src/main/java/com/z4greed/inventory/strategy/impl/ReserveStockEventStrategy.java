@@ -1,30 +1,30 @@
-package com.z4greed.inventory.service.inventory.strategy.impl;
+package com.z4greed.inventory.strategy.impl;
 
 import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
-import com.z4greed.inventory.service.inventory.reservation.InventoryReservationManager;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
-import com.z4greed.inventory.service.outbox.OutboxEventService;
+import com.z4greed.inventory.service.StockService;
+import com.z4greed.inventory.strategy.StockEventStrategy;
+import com.z4greed.inventory.service.OutboxEventService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ReserveStockEventStrategy implements InventoryEventStrategy {
-  private final InventoryReservationManager inventoryReservationManager;
+public class ReserveStockEventStrategy implements StockEventStrategy {
+  private final StockService stockService;
   private final InventoryEventFactory inventoryEventFactory;
   private final OutboxEventService outboxEventService;
 
   public ReserveStockEventStrategy(
-      InventoryReservationManager inventoryReservationManager,
+      StockService stockService,
       InventoryEventFactory inventoryEventFactory,
       OutboxEventService outboxEventService
   ) {
-    this.inventoryReservationManager = inventoryReservationManager;
+    this.stockService = stockService;
     this.inventoryEventFactory = inventoryEventFactory;
     this.outboxEventService = outboxEventService;
   }
@@ -41,7 +41,7 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
     JsonNode listItems = eventEnvelopeDto.payload().get("items");
 
     for (JsonNode itemNode : listItems) {
-      boolean reserved = this.inventoryReservationManager.tryReserve(orderId, itemNode, listReservations);
+      boolean reserved = this.stockService.tryReserve(orderId, itemNode, listReservations);
 
       if (!reserved) {
         this.publishStockNotAvailable(eventEnvelopeDto, itemNode);

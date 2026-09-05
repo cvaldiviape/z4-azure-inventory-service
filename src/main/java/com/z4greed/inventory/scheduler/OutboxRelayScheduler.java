@@ -1,7 +1,8 @@
-package com.z4greed.inventory.service.outbox;
+package com.z4greed.inventory.scheduler;
 
 import com.z4greed.inventory.entity.OutboxEventEntity;
 import com.z4greed.inventory.kafka.producer.InventoryEventProducer;
+import com.z4greed.inventory.service.OutboxEventService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,12 +11,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class OutboxEventPublisher {
+public class OutboxRelayScheduler {
   private final OutboxEventService outboxEventService;
   private final InventoryEventProducer inventoryEventProducer;
   private final int batchSize;
 
-  public OutboxEventPublisher(
+  public OutboxRelayScheduler(
       OutboxEventService outboxEventService,
       InventoryEventProducer inventoryEventProducer,
       @Value("${app.outbox.batch-size}") int batchSize
