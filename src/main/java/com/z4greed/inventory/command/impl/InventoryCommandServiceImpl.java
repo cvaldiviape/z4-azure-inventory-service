@@ -71,7 +71,7 @@ public class InventoryCommandServiceImpl implements InventoryCommandService {
     }
     stockEventStrategy.execute(eventEnvelopeDto);
     
-    this.inboxEventService.register(eventEnvelopeDto);
+    this.inboxEventService.register(eventEnvelopeDto, "inventory-commands-topic");
     log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 

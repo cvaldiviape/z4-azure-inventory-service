@@ -37,7 +37,7 @@ public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, E
     Long orderId = Long.valueOf(eventEnvelopeDto.aggregateId());
 
     List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
-    this.stockService.releaseAll(listReservations);
+    this.stockService.releaseAll(listReservations, eventEnvelopeDto.eventId());
 
     Map<String, Object> mapPayload = Map.of();
     EventEnvelopeDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, eventEnvelopeDto, mapPayload);

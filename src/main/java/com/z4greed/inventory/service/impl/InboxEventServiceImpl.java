@@ -26,8 +26,8 @@ public class InboxEventServiceImpl implements InboxEventService {
 
   @Override
   @Transactional
-  public void register(EventEnvelopeDto eventEnvelopeDto) {
-    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(eventEnvelopeDto);
+  public void register(EventEnvelopeDto eventEnvelopeDto, String sourceTopic) {
+    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(eventEnvelopeDto, sourceTopic);
     this.inboxEventRepository.save(inboxEvent);
   }
 
