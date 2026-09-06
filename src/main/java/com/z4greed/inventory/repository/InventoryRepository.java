@@ -17,9 +17,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, Long
       WHERE product_id = :productId
         AND available_quantity >= :quantity
       """, nativeQuery = true)
-  Integer reserve(
-      @Param("productId") Long productId,
-      @Param("quantity") Integer quantity);
+  int reserveIfAvailable(@Param("productId") Long productId, @Param("quantity") Integer quantity);
 
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(value = """
@@ -31,7 +29,5 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, Long
       WHERE product_id = :productId
         AND reserved_quantity >= :quantity
       """, nativeQuery = true)
-  Integer release(
-      @Param("productId") Long productId,
-      @Param("quantity") Integer quantity);
+  int releaseIfReserved(@Param("productId") Long productId, @Param("quantity") Integer quantity);
 }

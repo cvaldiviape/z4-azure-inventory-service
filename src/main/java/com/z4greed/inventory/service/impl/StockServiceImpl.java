@@ -1,36 +1,39 @@
-package com.z4greed.inventory.service.inventory.reservation;
+package com.z4greed.inventory.service.impl;
 
-import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
-import com.z4greed.inventory.exception.GreedException;
+import com.z4greed.inventory.exception.CustomBusinessException;
 import com.z4greed.inventory.repository.InventoryRepository;
 import com.z4greed.inventory.repository.ReservationRepository;
+import com.z4greed.inventory.service.StockService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
 
-@Component
-public class InventoryReservationManager {
+@Service
+public class StockServiceImpl implements StockService {
   private final InventoryRepository inventoryRepository;
   private final ReservationRepository reservationRepository;
 
-  public InventoryReservationManager(
-      InventoryRepository inventoryRepository,
-      ReservationRepository reservationRepository
-  ) {
+  public StockServiceImpl(InventoryRepository inventoryRepository, ReservationRepository reservationRepository) {
     this.inventoryRepository = inventoryRepository;
     this.reservationRepository = reservationRepository;
   }
 
-  public Boolean reserve(Long orderId, JsonNode itemNode, List<ReservationEntity> listReservations) {
+  @Override
+  public boolean tryReserve(
+      Long orderId,
+      JsonNode itemNode,
+      List<ReservationEntity> listReservations
+  ) {
     Long productId = itemNode.get("productId").asLong();
     Integer quantity = itemNode.get("quantity").asInt();
-    Integer affectedRows = this.inventoryRepository.reserve(productId, quantity);
+    int updatedRows = this.inventoryRepository.reserveIfAvailable(productId, quantity);
 
-    if (affectedRows == 0) {
+    if (updatedRows == 0) {
       this.releaseAll(listReservations);
       return false;
     }
@@ -53,21 +56,25 @@ public class InventoryReservationManager {
     return this.reservationRepository.save(reservationEntity);
   }
 
+  @Override
   public List<ReservationEntity> findReservedByOrderId(Long orderId) {
-    return this.reservationRepository.findByOrderIdAndStatus(orderId, ReservationStatusEnum.RESERVED);
+    return this.reservationRepository.findByOrderIdAndStatus(
+        orderId,
+        ReservationStatusEnum.RESERVED);
   }
 
+  @Override
   public void releaseAll(List<ReservationEntity> listReservations) {
-    listReservations.forEach(this::release);
+    listReservations.forEach(this::releaseReservation);
   }
 
-  private void release(ReservationEntity reservationEntity) {
+  private void releaseReservation(ReservationEntity reservationEntity) {
     Long productId = reservationEntity.getProductId();
     Integer quantity = reservationEntity.getQuantity();
-    Integer affectedRows = this.inventoryRepository.release(productId, quantity);
+    int updatedRows = this.inventoryRepository.releaseIfReserved(productId, quantity);
 
-    if (affectedRows != 1) {
-      throw new GreedException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
+    if (updatedRows != 1) {
+      throw new CustomBusinessException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
     }
 
     reservationEntity.setStatus(ReservationStatusEnum.RELEASED);

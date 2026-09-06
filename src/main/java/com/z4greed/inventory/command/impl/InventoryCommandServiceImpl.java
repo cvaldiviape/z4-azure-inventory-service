@@ -1,16 +1,14 @@
-package com.z4greed.inventory.service.inventory.impl;
+package com.z4greed.inventory.command.impl;
 
 import tools.jackson.databind.ObjectMapper;
-import com.z4greed.inventory.entity.ProcessedEventEntity;
+import com.z4greed.inventory.command.InventoryCommandService;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.exception.GreedException;
+import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
-import com.z4greed.inventory.mapper.ProcessedEventMapper;
-import com.z4greed.inventory.repository.ProcessedEventRepository;
-import com.z4greed.inventory.service.inventory.InventoryService;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategyRegistry;
+import com.z4greed.inventory.service.InboxEventService;
+import com.z4greed.inventory.strategy.EventStrategy;
+import com.z4greed.inventory.strategy.StockEventStrategyRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,21 +17,18 @@ import java.util.Optional;
 @Service
 @Transactional
 @Slf4j
-public class InventoryServiceImpl implements InventoryService {
-  private final ProcessedEventRepository processedEventRepository;
-  private final ProcessedEventMapper processedEventMapper;
-  private final InventoryEventStrategyRegistry eventStrategyRegistry;
+public class InventoryCommandServiceImpl implements InventoryCommandService {
+  private final InboxEventService inboxEventService;
+  private final StockEventStrategyRegistry stockEventStrategyRegistry;
   private final ObjectMapper mapper;
 
-  public InventoryServiceImpl(
-      ProcessedEventRepository processedEventRepository,
-      ProcessedEventMapper processedEventMapper,
-      InventoryEventStrategyRegistry eventStrategyRegistry,
+  public InventoryCommandServiceImpl(
+      InboxEventService inboxEventService,
+      StockEventStrategyRegistry stockEventStrategyRegistry,
       ObjectMapper mapper
   ) {
-    this.processedEventRepository = processedEventRepository;
-    this.processedEventMapper = processedEventMapper;
-    this.eventStrategyRegistry = eventStrategyRegistry;
+    this.inboxEventService = inboxEventService;
+    this.stockEventStrategyRegistry = stockEventStrategyRegistry;
     this.mapper = mapper;
   }
 
@@ -50,53 +45,43 @@ public class InventoryServiceImpl implements InventoryService {
     }
   }
 
-  private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
-    Boolean wasProcessed = this.wasProcessed(eventEnvelopeDto);
-
-    if (wasProcessed) {
-      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
-      return;
-    }
-
-    InventoryEventStrategy eventStrategy = this.findEventStrategy(eventEnvelopeDto);
-
-    if (eventStrategy == null) {
-      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
-      return;
-    }
-
-    eventStrategy.execute(eventEnvelopeDto);
-    
-    this.markAsProcessed(eventEnvelopeDto);
-    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
-  }
-
   private EventEnvelopeDto readEvent(String rawEvent) {
     try {
       return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
     } catch (Exception exception) {
       log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
-      throw new GreedException(ErrorCodeEnum.INVALID_EVENT, exception);
+      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
     }
   }
 
-  private Boolean wasProcessed(EventEnvelopeDto eventEnvelopeDto) {
+  private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
     String eventId = eventEnvelopeDto.eventId();
-    return this.processedEventRepository.existsById(eventId);
+    boolean wasAlreadyProcessed = this.inboxEventService.wasAlreadyProcessed(eventId);
+
+    if (wasAlreadyProcessed) {
+      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
+      return;
+    }
+
+    EventStrategy<EventTypeEnum, EventEnvelopeDto> stockEventStrategy = this.findStockEventStrategy(eventEnvelopeDto);
+
+    if (stockEventStrategy == null) {
+      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
+      return;
+    }
+    stockEventStrategy.execute(eventEnvelopeDto);
+    
+    this.inboxEventService.register(eventEnvelopeDto);
+    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 
-  private InventoryEventStrategy findEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
+  private EventStrategy<EventTypeEnum, EventEnvelopeDto> findStockEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
     String eventType = eventEnvelopeDto.eventType();
     Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
 
     return eventTypeEnum
-        .map(this.eventStrategyRegistry::find)
+        .map(this.stockEventStrategyRegistry::find)
         .orElse(null);
-  }
-
-  private void markAsProcessed(EventEnvelopeDto eventEnvelopeDto) {
-    ProcessedEventEntity processedEventEntity = this.processedEventMapper.toEntity(eventEnvelopeDto);
-    this.processedEventRepository.save(processedEventEntity);
   }
 
 }

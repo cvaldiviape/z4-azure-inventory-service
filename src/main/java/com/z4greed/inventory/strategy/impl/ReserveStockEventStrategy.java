@@ -1,32 +1,32 @@
-package com.z4greed.inventory.service.inventory.strategy.impl;
+package com.z4greed.inventory.strategy.impl;
 
 import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
-import com.z4greed.inventory.kafka.producer.InventoryEventProducer;
-import com.z4greed.inventory.service.inventory.reservation.InventoryReservationManager;
-import com.z4greed.inventory.service.inventory.strategy.InventoryEventStrategy;
+import com.z4greed.inventory.service.StockService;
+import com.z4greed.inventory.strategy.EventStrategy;
+import com.z4greed.inventory.service.OutboxEventService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ReserveStockEventStrategy implements InventoryEventStrategy {
-  private final InventoryReservationManager inventoryReservationManager;
+public class ReserveStockEventStrategy implements EventStrategy<EventTypeEnum, EventEnvelopeDto> {
+  private final StockService stockService;
+  private final OutboxEventService outboxEventService;
   private final InventoryEventFactory inventoryEventFactory;
-  private final InventoryEventProducer inventoryEventProducer;
 
   public ReserveStockEventStrategy(
-      InventoryReservationManager inventoryReservationManager,
-      InventoryEventFactory inventoryEventFactory,
-      InventoryEventProducer inventoryEventProducer
+      StockService stockService,
+      OutboxEventService outboxEventService,
+      InventoryEventFactory inventoryEventFactory
   ) {
-    this.inventoryReservationManager = inventoryReservationManager;
+    this.stockService = stockService;
     this.inventoryEventFactory = inventoryEventFactory;
-    this.inventoryEventProducer = inventoryEventProducer;
+    this.outboxEventService = outboxEventService;
   }
 
   @Override
@@ -41,34 +41,38 @@ public class ReserveStockEventStrategy implements InventoryEventStrategy {
     JsonNode listItems = eventEnvelopeDto.payload().get("items");
 
     for (JsonNode itemNode : listItems) {
-      Boolean reserved = this.inventoryReservationManager.reserve(orderId, itemNode, listReservations);
+      boolean reserved = this.stockService.tryReserve(orderId, itemNode, listReservations);
 
       if (!reserved) {
         this.publishStockNotAvailable(eventEnvelopeDto, itemNode);
         return;
       }
     }
-
     this.publishStockReserved(eventEnvelopeDto, listReservations);
   }
 
   private void publishStockNotAvailable(EventEnvelopeDto sourceEvent, JsonNode itemNode) {
     Long productId = itemNode.get("productId").asLong();
-    Map<String, Object> mapPayload = Map.of("productId", productId);
+    Map<String, Object> mapPayload = Map.of(
+            "productId", productId
+    );
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, sourceEvent, mapPayload);
-    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
+
+    this.outboxEventService.enqueue("inventory-events-topic", eventEnvelopeDto);
   }
 
   private void publishStockReserved(EventEnvelopeDto sourceEvent, List<ReservationEntity> listReservations) {
     List<String> listReservationIds = listReservations.stream()
         .map(ReservationEntity::getReservationId)
         .toList();
-    Map<String, Object> mapPayload = Map.of("reservationIds", listReservationIds);
+    Map<String, Object> mapPayload = Map.of(
+            "reservationIds", listReservationIds
+    );
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, sourceEvent, mapPayload);
 
-    this.inventoryEventProducer.publish("inventory-events-topic", eventEnvelopeDto);
+    this.outboxEventService.enqueue("inventory-events-topic", eventEnvelopeDto);
   }
 
 }

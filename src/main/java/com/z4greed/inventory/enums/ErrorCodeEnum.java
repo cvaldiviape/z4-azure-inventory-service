@@ -8,6 +8,6 @@ import lombok.RequiredArgsConstructor;
 public enum ErrorCodeEnum {
   INVALID_EVENT("Invalid event"),
   INVALID_RESERVED_STOCK("Invalid reserved stock"),
-  EVENT_PUBLISH_FAILED("Event publish failed");
+  OUTBOX_SERIALIZATION_FAILED("Outbox event serialization failed");
   private final String message;
 }
