@@ -33,32 +33,27 @@ public class OutboxRelayScheduler {
     List<OutboxEventEntity> listPendingEvents = this.outboxEventService.findPending(this.batchSize);
 
     for (OutboxEventEntity outboxEvent : listPendingEvents) {
-      this.publishPendingEvent(outboxEvent);
+      String eventId = outboxEvent.getEventId();
+
+      try {
+        this.inventoryEventProducer.publishAndWait(outboxEvent); // Este métodox solo retorna normalmente cuando Kafka responde con su ACK.
+        this.outboxEventService.markAsPublished(eventId); // PUBLISHED significa que Kafka confirmó la publicación; no significa que el servicio consumidor ya haya procesado el evento.
+      } catch (RuntimeException exception) {
+        this.printLogError(outboxEvent, exception, eventId);
+      }
     }
   }
 
-  private void publishPendingEvent(OutboxEventEntity outboxEvent) {
-    String eventId = outboxEvent.getEventId();
+  private void printLogError(OutboxEventEntity outboxEvent, RuntimeException exception, String eventId) {
+    // Ante timeout o error de Kafka no se marca PUBLISHED. El registro continúa PENDING para que un ciclo posterior del scheduler vuelva a intentarlo.
+    String errorMessage = this.limitErrorMessage(exception.getMessage());
+    this.outboxEventService.registerFailedAttempt(eventId, errorMessage);
 
-    try {
-      // Este método solo retorna normalmente cuando Kafka responde con su ACK.
-      this.inventoryEventProducer.publishAndWait(outboxEvent);
-
-      // PUBLISHED significa que Kafka confirmó la publicación; no significa que
-      // el servicio consumidor ya haya procesado el evento.
-      this.outboxEventService.markAsPublished(eventId);
-    } catch (RuntimeException exception) {
-      // Ante timeout o error de Kafka no se marca PUBLISHED. El registro continúa
-      // PENDING para que un ciclo posterior del scheduler vuelva a intentarlo.
-      String errorMessage = this.limitErrorMessage(exception.getMessage());
-      this.outboxEventService.registerFailedAttempt(eventId, errorMessage);
-
-      String eventType = outboxEvent.getEventType();
-      String correlationId = outboxEvent.getCorrelationId();
-      String aggregateId = outboxEvent.getAggregateId();
-      int i = outboxEvent.getAttempts() + 1;
-      log.error("action=outbox_publish_failed eventType={} eventId={} correlationId={} orderId={} attempts={}", eventType, eventId, correlationId, aggregateId, i, exception);
-    }
+    String eventType = outboxEvent.getEventType();
+    String correlationId = outboxEvent.getCorrelationId();
+    String aggregateId = outboxEvent.getAggregateId();
+    int i = outboxEvent.getAttempts() + 1;
+    log.error("action=outbox_publish_failed eventType={} eventId={} correlationId={} orderId={} attempts={}", eventType, eventId, correlationId, aggregateId, i, exception);
   }
 
   private String limitErrorMessage(String errorMessage) {

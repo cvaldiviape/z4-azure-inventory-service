@@ -5,22 +5,22 @@ import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
-import com.z4greed.inventory.strategy.StockEventStrategy;
+import com.z4greed.inventory.strategy.EventStrategy;
 import com.z4greed.inventory.service.OutboxEventService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ReleaseStockEventStrategy implements StockEventStrategy {
+public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, EventEnvelopeDto> {
   private final StockService stockService;
-  private final InventoryEventFactory inventoryEventFactory;
   private final OutboxEventService outboxEventService;
+  private final InventoryEventFactory inventoryEventFactory;
 
   public ReleaseStockEventStrategy(
       StockService stockService,
-      InventoryEventFactory inventoryEventFactory,
-      OutboxEventService outboxEventService
+      OutboxEventService outboxEventService,
+      InventoryEventFactory inventoryEventFactory
   ) {
     this.stockService = stockService;
     this.inventoryEventFactory = inventoryEventFactory;

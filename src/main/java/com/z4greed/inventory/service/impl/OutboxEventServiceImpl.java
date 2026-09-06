@@ -9,6 +9,8 @@ import com.z4greed.inventory.repository.OutboxEventRepository;
 import com.z4greed.inventory.service.OutboxEventService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,21 +21,17 @@ public class OutboxEventServiceImpl implements OutboxEventService {
   private final OutboxEventRepository outboxEventRepository;
   private final ObjectMapper mapper;
 
-  public OutboxEventServiceImpl(
-      OutboxEventRepository outboxEventRepository,
-      ObjectMapper mapper
-  ) {
+  public OutboxEventServiceImpl(OutboxEventRepository outboxEventRepository, ObjectMapper mapper) {
     this.outboxEventRepository = outboxEventRepository;
     this.mapper = mapper;
   }
 
-  // Esta inserción participa en la misma transacción de inventario. Si la reserva,
-  // inbox_events o este INSERT falla, PostgreSQL revierte todas las operaciones.
   @Override
   @Transactional
   public void enqueue(String topic, EventEnvelopeDto eventEnvelopeDto) {
     String payload = this.serialize(eventEnvelopeDto);
-    OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
+
+    OutboxEventEntity outboxEventEntity = OutboxEventEntity.builder()
         .eventId(eventEnvelopeDto.eventId())
         .aggregateId(eventEnvelopeDto.aggregateId())
         .correlationId(eventEnvelopeDto.correlationId())
@@ -46,45 +44,42 @@ public class OutboxEventServiceImpl implements OutboxEventService {
         .createdAt(LocalDateTime.now())
         .build();
 
-    // Se mantiene fuera del catch de serialización para que Spring conserve la clase
-    // original de cualquier error de base de datos y aplique su política de reintentos.
-    this.outboxEventRepository.save(outboxEvent);
+    this.outboxEventRepository.save(outboxEventEntity);
   }
 
   private String serialize(EventEnvelopeDto eventEnvelopeDto) {
     try {
       return this.mapper.writeValueAsString(eventEnvelopeDto);
     } catch (Exception exception) {
-      throw new CustomNonRetryableKafkaException(
-          ErrorCodeEnum.OUTBOX_SERIALIZATION_FAILED,
-          exception);
+      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.OUTBOX_SERIALIZATION_FAILED, exception);
     }
   }
 
-  @Override
-  @Transactional(readOnly = true)
+  @Override @Transactional(readOnly = true)
   public List<OutboxEventEntity> findPending(int batchSize) {
-    return this.outboxEventRepository.findByStatusOrderByCreatedAtAsc(
-        OutboxStatusEnum.PENDING,
-        PageRequest.of(0, batchSize));
+    PageRequest pageable = PageRequest.of(0, batchSize);
+    return this.outboxEventRepository.findByStatusOrderByCreatedAtAsc(OutboxStatusEnum.PENDING, pageable);
   }
 
-  @Override
-  @Transactional
+  @Override @Transactional
   public void markAsPublished(String eventId) {
-    this.outboxEventRepository.findById(eventId).ifPresent(outboxEvent -> {
+    Optional<OutboxEventEntity> outboxEventEntity = this.outboxEventRepository.findById(eventId);
+
+    outboxEventEntity.ifPresent(outboxEvent -> {
       outboxEvent.setStatus(OutboxStatusEnum.PUBLISHED);
       outboxEvent.setPublishedAt(LocalDateTime.now());
       outboxEvent.setLastError(null);
     });
   }
 
-  @Override
-  @Transactional
+  @Override@Transactional
   public void registerFailedAttempt(String eventId, String errorMessage) {
-    this.outboxEventRepository.findById(eventId).ifPresent(outboxEvent -> {
+    Optional<OutboxEventEntity> outboxEventEntity = this.outboxEventRepository.findById(eventId);
+
+    outboxEventEntity.ifPresent(outboxEvent -> {
       outboxEvent.setAttempts(outboxEvent.getAttempts() + 1);
       outboxEvent.setLastError(errorMessage);
     });
   }
+
 }

@@ -6,7 +6,7 @@ import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
-import com.z4greed.inventory.strategy.StockEventStrategy;
+import com.z4greed.inventory.strategy.EventStrategy;
 import com.z4greed.inventory.service.OutboxEventService;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,15 +14,15 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ReserveStockEventStrategy implements StockEventStrategy {
+public class ReserveStockEventStrategy implements EventStrategy<EventTypeEnum, EventEnvelopeDto> {
   private final StockService stockService;
-  private final InventoryEventFactory inventoryEventFactory;
   private final OutboxEventService outboxEventService;
+  private final InventoryEventFactory inventoryEventFactory;
 
   public ReserveStockEventStrategy(
       StockService stockService,
-      InventoryEventFactory inventoryEventFactory,
-      OutboxEventService outboxEventService
+      OutboxEventService outboxEventService,
+      InventoryEventFactory inventoryEventFactory
   ) {
     this.stockService = stockService;
     this.inventoryEventFactory = inventoryEventFactory;
@@ -48,13 +48,14 @@ public class ReserveStockEventStrategy implements StockEventStrategy {
         return;
       }
     }
-
     this.publishStockReserved(eventEnvelopeDto, listReservations);
   }
 
   private void publishStockNotAvailable(EventEnvelopeDto sourceEvent, JsonNode itemNode) {
     Long productId = itemNode.get("productId").asLong();
-    Map<String, Object> mapPayload = Map.of("productId", productId);
+    Map<String, Object> mapPayload = Map.of(
+            "productId", productId
+    );
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, sourceEvent, mapPayload);
 
@@ -65,7 +66,9 @@ public class ReserveStockEventStrategy implements StockEventStrategy {
     List<String> listReservationIds = listReservations.stream()
         .map(ReservationEntity::getReservationId)
         .toList();
-    Map<String, Object> mapPayload = Map.of("reservationIds", listReservationIds);
+    Map<String, Object> mapPayload = Map.of(
+            "reservationIds", listReservationIds
+    );
 
     EventEnvelopeDto eventEnvelopeDto = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, sourceEvent, mapPayload);
 

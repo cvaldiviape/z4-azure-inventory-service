@@ -18,10 +18,7 @@ public class StockServiceImpl implements StockService {
   private final InventoryRepository inventoryRepository;
   private final ReservationRepository reservationRepository;
 
-  public StockServiceImpl(
-      InventoryRepository inventoryRepository,
-      ReservationRepository reservationRepository
-  ) {
+  public StockServiceImpl(InventoryRepository inventoryRepository, ReservationRepository reservationRepository) {
     this.inventoryRepository = inventoryRepository;
     this.reservationRepository = reservationRepository;
   }

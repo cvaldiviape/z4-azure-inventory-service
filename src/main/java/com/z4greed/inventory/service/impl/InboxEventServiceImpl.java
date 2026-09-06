@@ -13,10 +13,7 @@ public class InboxEventServiceImpl implements InboxEventService {
   private final InboxEventRepository inboxEventRepository;
   private final InboxEventMapper inboxEventMapper;
 
-  public InboxEventServiceImpl(
-      InboxEventRepository inboxEventRepository,
-      InboxEventMapper inboxEventMapper
-  ) {
+  public InboxEventServiceImpl(InboxEventRepository inboxEventRepository, InboxEventMapper inboxEventMapper) {
     this.inboxEventRepository = inboxEventRepository;
     this.inboxEventMapper = inboxEventMapper;
   }

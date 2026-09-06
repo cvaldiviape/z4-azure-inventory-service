@@ -7,7 +7,7 @@ import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
 import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
 import com.z4greed.inventory.service.InboxEventService;
-import com.z4greed.inventory.strategy.StockEventStrategy;
+import com.z4greed.inventory.strategy.EventStrategy;
 import com.z4greed.inventory.strategy.StockEventStrategyRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -63,7 +63,7 @@ public class InventoryCommandServiceImpl implements InventoryCommandService {
       return;
     }
 
-    StockEventStrategy stockEventStrategy = this.findStockEventStrategy(eventEnvelopeDto);
+    EventStrategy<EventTypeEnum, EventEnvelopeDto> stockEventStrategy = this.findStockEventStrategy(eventEnvelopeDto);
 
     if (stockEventStrategy == null) {
       log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
@@ -75,7 +75,7 @@ public class InventoryCommandServiceImpl implements InventoryCommandService {
     log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
   }
 
-  private StockEventStrategy findStockEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
+  private EventStrategy<EventTypeEnum, EventEnvelopeDto> findStockEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
     String eventType = eventEnvelopeDto.eventType();
     Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
 
