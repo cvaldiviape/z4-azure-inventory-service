@@ -5,7 +5,7 @@ import com.z4greed.inventory.command.InventoryCommandService;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.EventTypeEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import com.z4greed.inventory.service.InboxEventService;
 import com.z4greed.inventory.strategy.EventStrategy;
 import com.z4greed.inventory.strategy.StockEventStrategyRegistry;
@@ -34,49 +34,49 @@ public class InventoryCommandServiceImpl implements InventoryCommandService {
 
   @Override
   public void process(String rawEvent) {
-    EventEnvelopeDto eventEnvelopeDto = this.readEvent(rawEvent);
-    log.info("action=event_received eventType={} eventId={} correlationId={} orderId={} producer={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId(), eventEnvelopeDto.producer());
+    IntegrationEventDto event = this.readEvent(rawEvent);
+    log.info("action=event_received eventType={} eventId={} correlationId={} orderId={} producer={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), event.producer());
 
     try {
-      this.processEvent(eventEnvelopeDto);
+      this.processEvent(event);
     } catch (RuntimeException exception) {
-      log.error("action=event_processing_failed eventType={} eventId={} correlationId={} orderId={} exceptionType={} errorMessage=\"{}\"", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId(), exception.getClass().getSimpleName(), exception.getMessage(), exception);
+      log.error("action=event_processing_failed eventType={} eventId={} correlationId={} orderId={} exceptionType={} errorMessage=\"{}\"", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), exception.getClass().getSimpleName(), exception.getMessage(), exception);
       throw exception;
     }
   }
 
-  private EventEnvelopeDto readEvent(String rawEvent) {
+  private IntegrationEventDto readEvent(String rawEvent) {
     try {
-      return this.mapper.readValue(rawEvent, EventEnvelopeDto.class);
+      return this.mapper.readValue(rawEvent, IntegrationEventDto.class);
     } catch (Exception exception) {
       log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
       throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
     }
   }
 
-  private void processEvent(EventEnvelopeDto eventEnvelopeDto) {
-    String eventId = eventEnvelopeDto.eventId();
+  private void processEvent(IntegrationEventDto event) {
+    String eventId = event.eventId();
     boolean wasAlreadyProcessed = this.inboxEventService.wasAlreadyProcessed(eventId);
 
     if (wasAlreadyProcessed) {
-      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
+      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
       return;
     }
 
-    EventStrategy<EventTypeEnum, EventEnvelopeDto> stockEventStrategy = this.findStockEventStrategy(eventEnvelopeDto);
+    EventStrategy<EventTypeEnum, IntegrationEventDto> stockEventStrategy = this.findStockEventStrategy(event);
 
     if (stockEventStrategy == null) {
-      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
+      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
       return;
     }
-    stockEventStrategy.execute(eventEnvelopeDto);
+    stockEventStrategy.execute(event);
     
-    this.inboxEventService.register(eventEnvelopeDto);
-    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", eventEnvelopeDto.eventType(), eventEnvelopeDto.eventId(), eventEnvelopeDto.correlationId(), eventEnvelopeDto.aggregateId());
+    this.inboxEventService.register(event, "inventory-reservation-requests-topic");
+    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
   }
 
-  private EventStrategy<EventTypeEnum, EventEnvelopeDto> findStockEventStrategy(EventEnvelopeDto eventEnvelopeDto) {
-    String eventType = eventEnvelopeDto.eventType();
+  private EventStrategy<EventTypeEnum, IntegrationEventDto> findStockEventStrategy(IntegrationEventDto event) {
+    String eventType = event.eventType();
     Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
 
     return eventTypeEnum

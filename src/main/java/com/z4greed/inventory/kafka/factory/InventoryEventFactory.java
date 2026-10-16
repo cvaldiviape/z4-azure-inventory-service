@@ -2,7 +2,7 @@ package com.z4greed.inventory.kafka.factory;
 
 import tools.jackson.databind.ObjectMapper;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -20,14 +20,14 @@ public class InventoryEventFactory {
     this.objectMapper = objectMapper;
   }
 
-  public EventEnvelopeDto build(EventTypeEnum eventTypeEnum, EventEnvelopeDto sourceEvent, Object payload) {
-    return EventEnvelopeDto.builder()
+  public IntegrationEventDto build(EventTypeEnum eventTypeEnum, IntegrationEventDto event, Object payload) {
+    return IntegrationEventDto.builder()
         .eventId(UUID.randomUUID().toString())
         .eventType(eventTypeEnum.getValue())
         .eventVersion(EVENT_VERSION)
-        .aggregateId(sourceEvent.aggregateId())
-        .correlationId(sourceEvent.correlationId())
-        .causationId(sourceEvent.eventId())
+        .aggregateId(event.aggregateId())
+        .correlationId(event.correlationId())
+        .previousEventId(event.eventId())
         .timestamp(LocalDateTime.now())
         .producer(PRODUCER)
         .payload(this.objectMapper.valueToTree(payload))

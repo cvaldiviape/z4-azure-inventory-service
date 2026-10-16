@@ -8,9 +8,10 @@ public interface StockService {
   boolean tryReserve(
       Long orderId,
       JsonNode itemNode,
-      List<ReservationEntity> listReservations);
+      List<ReservationEntity> listReservations,
+      String eventId);
 
   List<ReservationEntity> findReservedByOrderId(Long orderId);
 
-  void releaseAll(List<ReservationEntity> listReservations);
+  void releaseAll(List<ReservationEntity> listReservations, String eventId);
 }

@@ -1,7 +1,7 @@
 package com.z4greed.inventory.mapper;
 
 import com.z4greed.inventory.entity.InboxEventEntity;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import java.time.LocalDateTime;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,5 +12,5 @@ import org.mapstruct.Named;
 public interface InboxEventMapper {
   @Named("InboxEventMapper.toEntity")
   @Mapping(target = "processedAt", expression = "java(LocalDateTime.now())")
-  InboxEventEntity toEntity(EventEnvelopeDto dto);
+  InboxEventEntity toEntity(IntegrationEventDto dto, String sourceTopic);
 }

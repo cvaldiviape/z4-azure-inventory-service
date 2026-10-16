@@ -5,8 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 public interface InventoryRepository extends JpaRepository<InventoryEntity, Long> {
+  Optional<InventoryEntity> findByProductId(Long productId);
+
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(value = """
       UPDATE inventories

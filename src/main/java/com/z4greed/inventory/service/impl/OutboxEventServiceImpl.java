@@ -4,7 +4,7 @@ import com.z4greed.inventory.entity.OutboxEventEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.OutboxStatusEnum;
 import com.z4greed.inventory.exception.CustomNonRetryableKafkaException;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import com.z4greed.inventory.repository.OutboxEventRepository;
 import com.z4greed.inventory.service.OutboxEventService;
 import java.time.LocalDateTime;
@@ -28,16 +28,16 @@ public class OutboxEventServiceImpl implements OutboxEventService {
 
   @Override
   @Transactional
-  public void enqueue(String topic, EventEnvelopeDto eventEnvelopeDto) {
-    String payload = this.serialize(eventEnvelopeDto);
+  public void enqueue(String topic, IntegrationEventDto event) {
+    String payload = this.serialize(event);
 
     OutboxEventEntity outboxEventEntity = OutboxEventEntity.builder()
-        .eventId(eventEnvelopeDto.eventId())
-        .aggregateId(eventEnvelopeDto.aggregateId())
-        .correlationId(eventEnvelopeDto.correlationId())
-        .eventType(eventEnvelopeDto.eventType())
+        .eventId(event.eventId())
+        .aggregateId(event.aggregateId())
+        .correlationId(event.correlationId())
+        .eventType(event.eventType())
         .topic(topic)
-        .eventKey(eventEnvelopeDto.aggregateId())
+        .eventKey(event.aggregateId())
         .payload(payload)
         .status(OutboxStatusEnum.PENDING)
         .attempts(0)
@@ -47,9 +47,9 @@ public class OutboxEventServiceImpl implements OutboxEventService {
     this.outboxEventRepository.save(outboxEventEntity);
   }
 
-  private String serialize(EventEnvelopeDto eventEnvelopeDto) {
+  private String serialize(IntegrationEventDto event) {
     try {
-      return this.mapper.writeValueAsString(eventEnvelopeDto);
+      return this.mapper.writeValueAsString(event);
     } catch (Exception exception) {
       throw new CustomNonRetryableKafkaException(ErrorCodeEnum.OUTBOX_SERIALIZATION_FAILED, exception);
     }
