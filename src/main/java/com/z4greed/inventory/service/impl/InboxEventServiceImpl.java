@@ -1,7 +1,7 @@
 package com.z4greed.inventory.service.impl;
 
 import com.z4greed.inventory.entity.InboxEventEntity;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import com.z4greed.inventory.mapper.InboxEventMapper;
 import com.z4greed.inventory.repository.InboxEventRepository;
 import com.z4greed.inventory.service.InboxEventService;
@@ -26,8 +26,8 @@ public class InboxEventServiceImpl implements InboxEventService {
 
   @Override
   @Transactional
-  public void register(EventEnvelopeDto eventEnvelopeDto, String sourceTopic) {
-    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(eventEnvelopeDto, sourceTopic);
+  public void register(IntegrationEventDto event, String sourceTopic) {
+    InboxEventEntity inboxEvent = this.inboxEventMapper.toEntity(event, sourceTopic);
     this.inboxEventRepository.save(inboxEvent);
   }
 

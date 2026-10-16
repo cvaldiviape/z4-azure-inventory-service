@@ -2,7 +2,7 @@ package com.z4greed.inventory.strategy.impl;
 
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.EventEnvelopeDto;
+import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
 import com.z4greed.inventory.strategy.EventStrategy;
@@ -12,7 +12,7 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, EventEnvelopeDto> {
+public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, IntegrationEventDto> {
   private final StockService stockService;
   private final OutboxEventService outboxEventService;
   private final InventoryEventFactory inventoryEventFactory;
@@ -33,16 +33,16 @@ public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, E
   }
 
   @Override
-  public void execute(EventEnvelopeDto eventEnvelopeDto) {
-    Long orderId = Long.valueOf(eventEnvelopeDto.aggregateId());
+  public void execute(IntegrationEventDto event) {
+    Long orderId = Long.valueOf(event.aggregateId());
 
     List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
-    this.stockService.releaseAll(listReservations, eventEnvelopeDto.eventId());
+    this.stockService.releaseAll(listReservations, event.eventId());
 
     Map<String, Object> mapPayload = Map.of();
-    EventEnvelopeDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, eventEnvelopeDto, mapPayload);
+    IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event, mapPayload);
 
-    this.outboxEventService.enqueue("inventory-events-topic", stockReleasedEvent);
+    this.outboxEventService.enqueue("inventory-reservation-results-topic", stockReleasedEvent);
   }
 
 }
