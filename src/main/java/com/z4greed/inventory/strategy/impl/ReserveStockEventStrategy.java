@@ -15,64 +15,64 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ReserveStockEventStrategy implements EventStrategy<EventTypeEnum, IntegrationEventDto> {
-  private final StockService stockService;
-  private final OutboxEventService outboxEventService;
-  private final InventoryEventFactory inventoryEventFactory;
+    private final StockService stockService;
+    private final OutboxEventService outboxEventService;
+    private final InventoryEventFactory inventoryEventFactory;
 
-  public ReserveStockEventStrategy(
-      StockService stockService,
-      OutboxEventService outboxEventService,
-      InventoryEventFactory inventoryEventFactory
-  ) {
-    this.stockService = stockService;
-    this.inventoryEventFactory = inventoryEventFactory;
-    this.outboxEventService = outboxEventService;
-  }
-
-  @Override
-  public EventTypeEnum getEventType() {
-    return EventTypeEnum.RESERVE_STOCK;
-  }
-
-  @Override
-  public void execute(IntegrationEventDto event) {
-    Long orderId = Long.valueOf(event.aggregateId());
-    List<ReservationEntity> listReservations = new ArrayList<>();
-    JsonNode listItems = event.payload().get("items");
-
-    for (JsonNode itemNode : listItems) {
-      boolean reserved = this.stockService.tryReserve(orderId, itemNode, listReservations, event.eventId());
-
-      if (!reserved) {
-        this.publishStockNotAvailable(event, itemNode);
-        return;
-      }
+    public ReserveStockEventStrategy(
+            StockService stockService,
+            OutboxEventService outboxEventService,
+            InventoryEventFactory inventoryEventFactory
+    ) {
+        this.stockService = stockService;
+        this.inventoryEventFactory = inventoryEventFactory;
+        this.outboxEventService = outboxEventService;
     }
-    this.publishStockReserved(event, listReservations);
-  }
 
-  private void publishStockNotAvailable(IntegrationEventDto event, JsonNode itemNode) {
-    Long productId = itemNode.get("productId").asLong();
-    Map<String, Object> mapPayload = Map.of(
-            "productId", productId
-    );
+    @Override
+    public EventTypeEnum getEventType() {
+        return EventTypeEnum.RESERVE_STOCK;
+    }
 
-    IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, event, mapPayload);
+    @Override
+    public void execute(IntegrationEventDto event) {
+        Long orderId = Long.valueOf(event.aggregateId());
+        List<ReservationEntity> listReservations = new ArrayList<>();
+        JsonNode listItems = event.payload().get("items");
 
-    this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
-  }
+        for (JsonNode itemNode : listItems) {
+            boolean reserved = this.stockService.tryReserve(orderId, itemNode, listReservations, event.eventId());
 
-  private void publishStockReserved(IntegrationEventDto event, List<ReservationEntity> listReservations) {
-    List<String> listReservationIds = listReservations.stream()
-        .map(ReservationEntity::getReservationId)
-        .toList();
-    Map<String, Object> mapPayload = Map.of(
-            "reservationIds", listReservationIds
-    );
+            if (!reserved) {
+                this.publishStockNotAvailable(event, itemNode);
+                return;
+            }
+        }
+        this.publishStockReserved(event, listReservations);
+    }
 
-    IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, event, mapPayload);
+    private void publishStockNotAvailable(IntegrationEventDto event, JsonNode itemNode) {
+        Long productId = itemNode.get("productId").asLong();
+        Map<String, Object> mapPayload = Map.of(
+                        "productId", productId
+        );
 
-    this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
-  }
+        IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, event, mapPayload);
+
+        this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
+    }
+
+    private void publishStockReserved(IntegrationEventDto event, List<ReservationEntity> listReservations) {
+        List<String> listReservationIds = listReservations.stream()
+                .map(ReservationEntity::getReservationId)
+                .toList();
+        Map<String, Object> mapPayload = Map.of(
+                        "reservationIds", listReservationIds
+        );
+
+        IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, event, mapPayload);
+
+        this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
+    }
 
 }

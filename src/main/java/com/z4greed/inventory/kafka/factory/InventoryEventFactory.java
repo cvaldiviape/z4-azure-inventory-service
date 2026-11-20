@@ -9,28 +9,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class InventoryEventFactory {
-  private static final Integer EVENT_VERSION = 1;
-  private static final String PRODUCER = "inventory-service";
+    private static final Integer EVENT_VERSION = 1;
+    private static final String PRODUCER = "inventory-service";
 
-  private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-  public InventoryEventFactory(
-      ObjectMapper objectMapper
-  ) {
-    this.objectMapper = objectMapper;
-  }
+    public InventoryEventFactory(
+            ObjectMapper objectMapper
+    ) {
+        this.objectMapper = objectMapper;
+    }
 
-  public IntegrationEventDto build(EventTypeEnum eventTypeEnum, IntegrationEventDto event, Object payload) {
-    return IntegrationEventDto.builder()
-        .eventId(UUID.randomUUID().toString())
-        .eventType(eventTypeEnum.getValue())
-        .eventVersion(EVENT_VERSION)
-        .aggregateId(event.aggregateId())
-        .correlationId(event.correlationId())
-        .previousEventId(event.eventId())
-        .timestamp(LocalDateTime.now())
-        .producer(PRODUCER)
-        .payload(this.objectMapper.valueToTree(payload))
-        .build();
-  }
+    public IntegrationEventDto build(EventTypeEnum eventTypeEnum, IntegrationEventDto event, Object payload) {
+        return IntegrationEventDto.builder()
+                .eventId(UUID.randomUUID().toString())
+                .eventType(eventTypeEnum.getValue())
+                .eventVersion(EVENT_VERSION)
+                .aggregateId(event.aggregateId())
+                .correlationId(event.correlationId())
+                .previousEventId(event.eventId())
+                .timestamp(LocalDateTime.now())
+                .producer(PRODUCER)
+                .payload(this.objectMapper.valueToTree(payload))
+                .build();
+    }
 }

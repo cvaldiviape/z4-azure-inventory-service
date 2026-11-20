@@ -5,11 +5,11 @@ import com.z4greed.inventory.kafka.event.IntegrationEventDto;
 import java.util.List;
 
 public interface OutboxEventService {
-  void enqueue(String topic, IntegrationEventDto event);
+    void enqueue(String topic, IntegrationEventDto event);
 
-  List<OutboxEventEntity> findPending(int batchSize);
+    List<OutboxEventEntity> findPending(int batchSize);
 
-  void markAsPublished(String eventId);
+    void markAsPublished(String eventId);
 
-  void registerFailedAttempt(String eventId, String errorMessage);
+    void registerFailedAttempt(String eventId, String errorMessage);
 }

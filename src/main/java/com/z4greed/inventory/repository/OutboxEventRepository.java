@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, String> {
-  List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(
-      OutboxStatusEnum status,
-      Pageable pageable);
+    List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(
+            OutboxStatusEnum status,
+            Pageable pageable);
 }

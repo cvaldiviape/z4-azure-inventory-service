@@ -18,70 +18,70 @@ import java.util.Optional;
 @Transactional
 @Slf4j
 public class InventoryCommandServiceImpl implements InventoryCommandService {
-  private final InboxEventService inboxEventService;
-  private final StockEventStrategyRegistry stockEventStrategyRegistry;
-  private final ObjectMapper mapper;
+    private final InboxEventService inboxEventService;
+    private final StockEventStrategyRegistry stockEventStrategyRegistry;
+    private final ObjectMapper mapper;
 
-  public InventoryCommandServiceImpl(
-      InboxEventService inboxEventService,
-      StockEventStrategyRegistry stockEventStrategyRegistry,
-      ObjectMapper mapper
-  ) {
-    this.inboxEventService = inboxEventService;
-    this.stockEventStrategyRegistry = stockEventStrategyRegistry;
-    this.mapper = mapper;
-  }
-
-  @Override
-  public void process(String rawEvent) {
-    IntegrationEventDto event = this.readEvent(rawEvent);
-    log.info("action=event_received eventType={} eventId={} correlationId={} orderId={} producer={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), event.producer());
-
-    try {
-      this.processEvent(event);
-    } catch (RuntimeException exception) {
-      log.error("action=event_processing_failed eventType={} eventId={} correlationId={} orderId={} exceptionType={} errorMessage=\"{}\"", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), exception.getClass().getSimpleName(), exception.getMessage(), exception);
-      throw exception;
-    }
-  }
-
-  private IntegrationEventDto readEvent(String rawEvent) {
-    try {
-      return this.mapper.readValue(rawEvent, IntegrationEventDto.class);
-    } catch (Exception exception) {
-      log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
-      throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
-    }
-  }
-
-  private void processEvent(IntegrationEventDto event) {
-    String eventId = event.eventId();
-    boolean wasAlreadyProcessed = this.inboxEventService.wasAlreadyProcessed(eventId);
-
-    if (wasAlreadyProcessed) {
-      log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
-      return;
+    public InventoryCommandServiceImpl(
+            InboxEventService inboxEventService,
+            StockEventStrategyRegistry stockEventStrategyRegistry,
+            ObjectMapper mapper
+    ) {
+        this.inboxEventService = inboxEventService;
+        this.stockEventStrategyRegistry = stockEventStrategyRegistry;
+        this.mapper = mapper;
     }
 
-    EventStrategy<EventTypeEnum, IntegrationEventDto> stockEventStrategy = this.findStockEventStrategy(event);
+    @Override
+    public void process(String rawEvent) {
+        IntegrationEventDto event = this.readEvent(rawEvent);
+        log.info("action=event_received eventType={} eventId={} correlationId={} orderId={} producer={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), event.producer());
 
-    if (stockEventStrategy == null) {
-      log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
-      return;
+        try {
+            this.processEvent(event);
+        } catch (RuntimeException exception) {
+            log.error("action=event_processing_failed eventType={} eventId={} correlationId={} orderId={} exceptionType={} errorMessage=\"{}\"", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId(), exception.getClass().getSimpleName(), exception.getMessage(), exception);
+            throw exception;
+        }
     }
-    stockEventStrategy.execute(event);
-    
-    this.inboxEventService.register(event, "inventory-reservation-requests-topic");
-    log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
-  }
 
-  private EventStrategy<EventTypeEnum, IntegrationEventDto> findStockEventStrategy(IntegrationEventDto event) {
-    String eventType = event.eventType();
-    Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
+    private IntegrationEventDto readEvent(String rawEvent) {
+        try {
+            return this.mapper.readValue(rawEvent, IntegrationEventDto.class);
+        } catch (Exception exception) {
+            log.error("action=event_deserialization_failed message=Invalid_Kafka_event", exception);
+            throw new CustomNonRetryableKafkaException(ErrorCodeEnum.INVALID_EVENT, exception);
+        }
+    }
 
-    return eventTypeEnum
-        .map(this.stockEventStrategyRegistry::find)
-        .orElse(null);
-  }
+    private void processEvent(IntegrationEventDto event) {
+        String eventId = event.eventId();
+        boolean wasAlreadyProcessed = this.inboxEventService.wasAlreadyProcessed(eventId);
+
+        if (wasAlreadyProcessed) {
+            log.info("action=event_ignored reason=already_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
+            return;
+        }
+
+        EventStrategy<EventTypeEnum, IntegrationEventDto> stockEventStrategy = this.findStockEventStrategy(event);
+
+        if (stockEventStrategy == null) {
+            log.info("action=event_ignored reason=unsupported_event_type eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
+            return;
+        }
+        stockEventStrategy.execute(event);
+        
+        this.inboxEventService.register(event, "inventory-reservation-requests-topic");
+        log.info("action=event_processed eventType={} eventId={} correlationId={} orderId={}", event.eventType(), event.eventId(), event.correlationId(), event.aggregateId());
+    }
+
+    private EventStrategy<EventTypeEnum, IntegrationEventDto> findStockEventStrategy(IntegrationEventDto event) {
+        String eventType = event.eventType();
+        Optional<EventTypeEnum> eventTypeEnum = EventTypeEnum.fromValue(eventType);
+
+        return eventTypeEnum
+                .map(this.stockEventStrategyRegistry::find)
+                .orElse(null);
+    }
 
 }
