@@ -6,7 +6,7 @@ import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.ErrorCodeEnum;
 import com.z4greed.inventory.enums.InventoryMovementTypeEnum;
 import com.z4greed.inventory.enums.ReservationStatusEnum;
-import com.z4greed.inventory.exception.CustomBusinessException;
+import com.z4greed.shared.core.exception.BusinessException;
 import com.z4greed.inventory.repository.InventoryRepository;
 import com.z4greed.inventory.repository.InventoryMovementRepository;
 import com.z4greed.inventory.repository.ReservationRepository;
@@ -86,7 +86,7 @@ public class StockServiceImpl implements StockService {
         int updatedRows = this.inventoryRepository.releaseIfReserved(productId, quantity);
 
         if (updatedRows != 1) {
-            throw new CustomBusinessException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
+            throw new BusinessException(ErrorCodeEnum.INVALID_RESERVED_STOCK);
         }
 
         reservationEntity.setStatus(ReservationStatusEnum.RELEASED);

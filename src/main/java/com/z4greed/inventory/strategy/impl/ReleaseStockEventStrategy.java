@@ -2,11 +2,12 @@ package com.z4greed.inventory.strategy.impl;
 
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.IntegrationEventDto;
+import com.z4greed.shared.kafka.event.IntegrationEventDto;
+import com.z4greed.inventory.kafka.KafkaTopics;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
 import com.z4greed.inventory.strategy.EventStrategy;
-import com.z4greed.inventory.service.OutboxEventService;
+import com.z4greed.shared.kafka.outbox.OutboxEventService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -42,7 +43,7 @@ public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, I
         Map<String, Object> mapPayload = Map.of();
         IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event, mapPayload);
 
-        this.outboxEventService.enqueue("inventory-reservation-results-topic", stockReleasedEvent);
+        this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, stockReleasedEvent);
     }
 
 }

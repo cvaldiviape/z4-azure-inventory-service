@@ -1,7 +1,7 @@
 package com.z4greed.inventory.strategy;
 
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.IntegrationEventDto;
+import com.z4greed.shared.kafka.event.IntegrationEventDto;
 import com.z4greed.inventory.strategy.impl.ReleaseStockEventStrategy;
 import com.z4greed.inventory.strategy.impl.ReserveStockEventStrategy;
 import java.util.Map;

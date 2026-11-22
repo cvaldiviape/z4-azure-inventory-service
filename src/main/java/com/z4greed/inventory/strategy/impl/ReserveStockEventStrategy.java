@@ -3,11 +3,12 @@ package com.z4greed.inventory.strategy.impl;
 import tools.jackson.databind.JsonNode;
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.IntegrationEventDto;
+import com.z4greed.shared.kafka.event.IntegrationEventDto;
+import com.z4greed.inventory.kafka.KafkaTopics;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
 import com.z4greed.inventory.strategy.EventStrategy;
-import com.z4greed.inventory.service.OutboxEventService;
+import com.z4greed.shared.kafka.outbox.OutboxEventService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +60,7 @@ public class ReserveStockEventStrategy implements EventStrategy<EventTypeEnum, I
 
         IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_NOT_AVAILABLE, event, mapPayload);
 
-        this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
+        this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, resultEvent);
     }
 
     private void publishStockReserved(IntegrationEventDto event, List<ReservationEntity> listReservations) {
@@ -72,7 +73,7 @@ public class ReserveStockEventStrategy implements EventStrategy<EventTypeEnum, I
 
         IntegrationEventDto resultEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RESERVED, event, mapPayload);
 
-        this.outboxEventService.enqueue("inventory-reservation-results-topic", resultEvent);
+        this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, resultEvent);
     }
 
 }
