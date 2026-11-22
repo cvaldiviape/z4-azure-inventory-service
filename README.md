@@ -4,12 +4,12 @@ Servicio responsable de reservar y liberar stock durante la Saga de compra.
 
 ## Configuración local
 
-| Propiedad | Valor predeterminado |
-|---|---|
-| Puerto HTTP | `8083` |
-| PostgreSQL | `localhost:5435/inventory_db` |
-| Kafka | `localhost:9092` |
-| Consumer group ID | `inventory-request-consumer-group-id` |
+| #   | Propiedad         | Valor predeterminado                  |
+|-----|-------------------|---------------------------------------|
+| 1   | Puerto HTTP       | `8083`                                |
+| 2   | PostgreSQL        | `localhost:5435/inventory_db`         |
+| 3   | Kafka             | `localhost:9092`                      |
+| 4   | Consumer group ID | `inventory-request-consumer-group-id` |
 
 Flyway crea y modifica el esquema mediante `db/migration`. Hibernate utiliza `ddl-auto: validate` únicamente para comprobar que las entidades coincidan con las tablas; no crea ni altera la estructura.
 
