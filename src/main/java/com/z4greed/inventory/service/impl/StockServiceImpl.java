@@ -49,13 +49,13 @@ public class StockServiceImpl implements StockService {
             return false;
         }
 
-        ReservationEntity reservationEntity = this.create(orderId, productId, quantity);
-        this.registerMovement(reservationEntity, eventId, InventoryMovementTypeEnum.RESERVATION);
+        ReservationEntity reservationEntity = this.createReservation(orderId, productId, quantity);
+        this.createMovement(reservationEntity, eventId, InventoryMovementTypeEnum.RESERVATION);
         listReservations.add(reservationEntity);
         return true;
     }
 
-    private ReservationEntity create(Long orderId, Long productId, Integer quantity) {
+    private ReservationEntity createReservation(Long orderId, Long productId, Integer quantity) {
         ReservationEntity reservationEntity = ReservationEntity.builder()
                 .reservationId(UUID.randomUUID().toString())
                 .orderId(orderId)
@@ -92,10 +92,10 @@ public class StockServiceImpl implements StockService {
         reservationEntity.setStatus(ReservationStatusEnum.RELEASED);
         reservationEntity.setUpdatedAt(LocalDateTime.now());
         this.reservationRepository.save(reservationEntity);
-        this.registerMovement(reservationEntity, eventId, InventoryMovementTypeEnum.RELEASE);
+        this.createMovement(reservationEntity, eventId, InventoryMovementTypeEnum.RELEASE);
     }
 
-    private void registerMovement(
+    private void createMovement(
             ReservationEntity reservationEntity,
             String eventId,
             InventoryMovementTypeEnum movementType

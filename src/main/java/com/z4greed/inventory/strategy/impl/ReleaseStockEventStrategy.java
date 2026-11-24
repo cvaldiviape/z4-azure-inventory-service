@@ -34,11 +34,19 @@ public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, I
 
     @Override
     public void execute(IntegrationEventDto event) {
+        this.releaseReservations(event);
+        this.publishStockReleased(event);
+    }
+
+    private void releaseReservations(IntegrationEventDto event) {
         Long orderId = Long.valueOf(event.aggregateId());
+        String eventId = event.eventId();
 
         List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
-        this.stockService.releaseAll(listReservations, event.eventId());
+        this.stockService.releaseAll(listReservations, eventId);
+    }
 
+    private void publishStockReleased(IntegrationEventDto event) {
         IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event);
 
         this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, stockReleasedEvent);
