@@ -9,7 +9,6 @@ import com.z4greed.inventory.service.StockService;
 import com.z4greed.inventory.strategy.EventStrategy;
 import com.z4greed.shared.kafka.outbox.OutboxEventService;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,8 +39,7 @@ public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, I
         List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
         this.stockService.releaseAll(listReservations, event.eventId());
 
-        Map<String, Object> mapPayload = Map.of();
-        IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event, mapPayload);
+        IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event);
 
         this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, stockReleasedEvent);
     }

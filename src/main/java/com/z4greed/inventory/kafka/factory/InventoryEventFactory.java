@@ -14,7 +14,15 @@ public class InventoryEventFactory {
         this.integrationEventFactory = integrationEventFactory;
     }
 
+    public IntegrationEventDto build(EventTypeEnum eventTypeEnum, IntegrationEventDto previousEvent) {
+        String eventType = eventTypeEnum.getValue();
+
+        return this.integrationEventFactory.create(eventType, previousEvent);
+    }
+
     public IntegrationEventDto build(EventTypeEnum eventTypeEnum, IntegrationEventDto previousEvent, Object payload) {
-        return this.integrationEventFactory.createFollowing(eventTypeEnum.getValue(), previousEvent, payload);
+        String eventType = eventTypeEnum.getValue();
+
+        return this.integrationEventFactory.create(eventType, previousEvent, payload);
     }
 }
