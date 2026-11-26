@@ -13,13 +13,13 @@ import lombok.AccessLevel;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class InventoryEntity {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private Long productId;
-  private Integer availableQuantity;
-  private Integer reservedQuantity;
-  @Version private Long version;
-  private LocalDateTime updatedAt;
+    private Long productId;
+    private Integer availableQuantity;
+    private Integer reservedQuantity;
+    @Version private Long version;
+    private LocalDateTime updatedAt;
 }

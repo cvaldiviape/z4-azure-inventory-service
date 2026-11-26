@@ -22,22 +22,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class InventoryMovementEntity {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private Long productId;
-  private Long orderId;
-  private String reservationId;
-  private String eventId;
+    private Long productId;
+    private Long orderId;
+    private String reservationId;
+    private String eventId;
 
-  @Enumerated(EnumType.STRING)
-  private InventoryMovementTypeEnum movementType;
+    @Enumerated(EnumType.STRING)
+    private InventoryMovementTypeEnum movementType;
 
-  private Integer quantity;
-  private Integer availableBefore;
-  private Integer availableAfter;
-  private Integer reservedBefore;
-  private Integer reservedAfter;
-  private LocalDateTime createdAt;
+    private Integer quantity;
+    private Integer availableBefore;
+    private Integer availableAfter;
+    private Integer reservedBefore;
+    private Integer reservedAfter;
+    private LocalDateTime createdAt;
 }

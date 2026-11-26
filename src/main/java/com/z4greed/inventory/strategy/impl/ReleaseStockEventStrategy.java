@@ -2,47 +2,54 @@ package com.z4greed.inventory.strategy.impl;
 
 import com.z4greed.inventory.entity.ReservationEntity;
 import com.z4greed.inventory.enums.EventTypeEnum;
-import com.z4greed.inventory.kafka.event.IntegrationEventDto;
+import com.z4greed.shared.kafka.event.IntegrationEventDto;
+import com.z4greed.inventory.kafka.KafkaTopics;
 import com.z4greed.inventory.kafka.factory.InventoryEventFactory;
 import com.z4greed.inventory.service.StockService;
 import com.z4greed.inventory.strategy.EventStrategy;
-import com.z4greed.inventory.service.OutboxEventService;
+import com.z4greed.shared.kafka.outbox.OutboxEventService;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ReleaseStockEventStrategy implements EventStrategy<EventTypeEnum, IntegrationEventDto> {
-  private final StockService stockService;
-  private final OutboxEventService outboxEventService;
-  private final InventoryEventFactory inventoryEventFactory;
+    private final StockService stockService;
+    private final OutboxEventService outboxEventService;
+    private final InventoryEventFactory inventoryEventFactory;
 
-  public ReleaseStockEventStrategy(
-      StockService stockService,
-      OutboxEventService outboxEventService,
-      InventoryEventFactory inventoryEventFactory
-  ) {
-    this.stockService = stockService;
-    this.inventoryEventFactory = inventoryEventFactory;
-    this.outboxEventService = outboxEventService;
-  }
+    public ReleaseStockEventStrategy(
+            StockService stockService,
+            OutboxEventService outboxEventService,
+            InventoryEventFactory inventoryEventFactory
+    ) {
+        this.stockService = stockService;
+        this.inventoryEventFactory = inventoryEventFactory;
+        this.outboxEventService = outboxEventService;
+    }
 
-  @Override
-  public EventTypeEnum getEventType() {
-    return EventTypeEnum.RELEASE_STOCK;
-  }
+    @Override
+    public EventTypeEnum getEventType() {
+        return EventTypeEnum.RELEASE_STOCK;
+    }
 
-  @Override
-  public void execute(IntegrationEventDto event) {
-    Long orderId = Long.valueOf(event.aggregateId());
+    @Override
+    public void execute(IntegrationEventDto event) {
+        this.releaseReservations(event);
+        this.publishStockReleased(event);
+    }
 
-    List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
-    this.stockService.releaseAll(listReservations, event.eventId());
+    private void releaseReservations(IntegrationEventDto event) {
+        Long orderId = Long.valueOf(event.aggregateId());
+        String eventId = event.eventId();
 
-    Map<String, Object> mapPayload = Map.of();
-    IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event, mapPayload);
+        List<ReservationEntity> listReservations = this.stockService.findReservedByOrderId(orderId);
+        this.stockService.releaseAll(listReservations, eventId);
+    }
 
-    this.outboxEventService.enqueue("inventory-reservation-results-topic", stockReleasedEvent);
-  }
+    private void publishStockReleased(IntegrationEventDto event) {
+        IntegrationEventDto stockReleasedEvent = this.inventoryEventFactory.build(EventTypeEnum.STOCK_RELEASED, event);
+
+        this.outboxEventService.enqueue(KafkaTopics.INVENTORY_RESERVATION_RESULTS, stockReleasedEvent);
+    }
 
 }

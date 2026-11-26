@@ -5,13 +5,13 @@ import java.util.List;
 import tools.jackson.databind.JsonNode;
 
 public interface StockService {
-  boolean tryReserve(
-      Long orderId,
-      JsonNode itemNode,
-      List<ReservationEntity> listReservations,
-      String eventId);
+    boolean tryReserve(
+            Long orderId,
+            JsonNode itemNode,
+            List<ReservationEntity> listReservations,
+            String eventId);
 
-  List<ReservationEntity> findReservedByOrderId(Long orderId);
+    List<ReservationEntity> findReservedByOrderId(Long orderId);
 
-  void releaseAll(List<ReservationEntity> listReservations, String eventId);
+    void releaseAll(List<ReservationEntity> listReservations, String eventId);
 }

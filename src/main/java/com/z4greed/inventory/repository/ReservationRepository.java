@@ -6,5 +6,5 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
-  List<ReservationEntity> findByOrderIdAndStatus(Long orderId, ReservationStatusEnum status);
+    List<ReservationEntity> findByOrderIdAndStatus(Long orderId, ReservationStatusEnum status);
 }

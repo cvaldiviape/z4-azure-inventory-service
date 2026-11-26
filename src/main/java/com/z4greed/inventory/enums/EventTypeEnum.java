@@ -8,23 +8,23 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum EventTypeEnum {
-  RESERVE_STOCK("RESERVE_STOCK"),
-  RELEASE_STOCK("RELEASE_STOCK"),
-  STOCK_RESERVED("STOCK_RESERVED"),
-  STOCK_NOT_AVAILABLE("STOCK_NOT_AVAILABLE"),
-  STOCK_RELEASED("STOCK_RELEASED");
+    RESERVE_STOCK("RESERVE_STOCK"),
+    RELEASE_STOCK("RELEASE_STOCK"),
+    STOCK_RESERVED("STOCK_RESERVED"),
+    STOCK_NOT_AVAILABLE("STOCK_NOT_AVAILABLE"),
+    STOCK_RELEASED("STOCK_RELEASED");
 
-  private final String value;
+    private final String value;
 
-  public static Optional<EventTypeEnum> fromValue(String value) {
-    EventTypeEnum[] listEnumValues = values();
+    public static Optional<EventTypeEnum> fromValue(String value) {
+        EventTypeEnum[] listEnumValues = values();
 
-    return Arrays.stream(listEnumValues)
-            .filter(eventTypeEnum -> {
-              String valueEvent = eventTypeEnum.value;
-              return valueEvent.equals(value);
-            })
-            .findFirst();
-  }
+        return Arrays.stream(listEnumValues)
+                        .filter(eventTypeEnum -> {
+                            String valueEvent = eventTypeEnum.value;
+                            return valueEvent.equals(value);
+                        })
+                        .findFirst();
+    }
 
 }
